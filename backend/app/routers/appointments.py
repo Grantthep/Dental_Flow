@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -47,6 +47,8 @@ def _commit(db: Session):
 def _set_status(appt: Appointment, new: S):
     if new != appt.status and new not in TRANSITIONS.get(appt.status, set()):
         raise BookingError(409, "bad_status", f"Cannot change status from {appt.status.value} to {new.value}")
+    if new in (S.completed, S.no_show) and appt.start_at > datetime.now(UTC):
+        raise BookingError(409, "too_early", f"Cannot mark as {new.value} before the appointment starts")
     appt.status = new
 
 

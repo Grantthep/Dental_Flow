@@ -129,6 +129,7 @@ class Appointment(TimestampMixin, Base):
             using="gist",
             where=_ACTIVE,
         ),
+        Index("ix_appointments_start", "start_at"),  # all-dentists calendar
         Index("ix_appointments_dentist_start", "dentist_id", "start_at"),
         Index("ix_appointments_patient_start", "patient_id", "start_at"),
     )

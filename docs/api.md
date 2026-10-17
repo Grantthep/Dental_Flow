@@ -70,7 +70,7 @@ Booking errors:
 ```json
 { "detail": "Dentist already has an appointment at this time", "code": "slot_taken" }
 ```
-Codes: `slot_taken`, `patient_busy`, `outside_hours`, `time_off`, `in_past`, `bad_status`.
+Codes: `slot_taken`, `patient_busy`, `outside_hours`, `time_off`, `in_past`, `bad_status`, `too_early` (completed / no-show before the start time).
 Other errors use FastAPI's default `{ "detail": ... }` (422 validation errors have a list in `detail`).
 
 | Status | When |

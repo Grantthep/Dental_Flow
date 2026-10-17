@@ -130,3 +130,10 @@ def test_availability_overlap_rejected(client, setup):
     bad = [{"day_of_week": 0, "start_time": "09:00", "end_time": "12:00"},
            {"day_of_week": 0, "start_time": "11:00", "end_time": "14:00"}]
     assert client.put(f"{API}/dentists/{setup['d1']}/availability", json=bad).status_code == 422
+
+
+def test_cannot_complete_future_appointment(client, setup):
+    a = book(client, setup, "d1", "p1", at(9), at(9, 30)).json()["id"]
+    for status in ("completed", "no_show"):
+        r = client.patch(f"{API}/appointments/{a}", json={"status": status})
+        assert r.status_code == 409 and r.json()["code"] == "too_early"

@@ -37,3 +37,14 @@ pytest
 
 Double booking is blocked by PostgreSQL exclusion constraints on `appointments`
 (same dentist or same patient, overlapping time, status not cancelled/no-show).
+
+## Importing the clinic's existing patients
+CSV or Excel (.xlsx). Dry run first — it only reports, writes nothing:
+```bash
+python import_patients.py clinic_patients.xlsx --errors bad_rows.csv
+python import_patients.py clinic_patients.xlsx --commit
+```
+Headers are matched loosely (`Name`, `Mobile`, `DOB`, `Sex`, `Allergies`, ...); see the top of `import_patients.py`.
+Dates that aren't `YYYY-MM-DD` are read as `DD/MM/YYYY` (change with `--date-format`).
+Duplicates (same name + phone) and invalid rows are skipped and listed.
+**Only import real records after the clinic approves and backups are in place.**
