@@ -1,0 +1,43 @@
+# Local development stack.  cp .env.example .env  then  docker compose up --build
+#   API docs: http://localhost:8000/docs
+#   Fake data + dev logins:  docker compose exec backend python seed.py
+#   Tests:                   docker compose exec -e TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/dentalflow_test backend pytest
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-dentalflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"  # localhost only; not exposed to the network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dentalflow}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # frontend: added when the Next.js app lands on the frontend branch.
+  #   build: ./frontend
+  #   environment:
+  #     NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+  #   ports: ["127.0.0.1:3000:3000"]
+  #   depends_on: [backend]
+
+volumes:
+  pgdata:

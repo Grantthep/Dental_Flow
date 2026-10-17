@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node
+node_modules/
+.next/
+
+# Local data / exports (may contain real patient data)
+*.csv
+*.xlsx
+*.dump
+*.sql.gz
+backups/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
