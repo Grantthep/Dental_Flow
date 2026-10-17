@@ -17,6 +17,7 @@ Before opening a PR, bring in the latest `main`: `git pull origin main`.
 3. At least **one other member** reviews and approves. Grant (tech lead) reviews anything touching
    the database schema or booking rules; Aung reviews anything touching auth or permissions.
 4. Squash or merge — don't force-push to `main`.
+5. Update [docs/progress.md](docs/progress.md): tick your tasks, add a log line, leave handoff notes.
 
 ## Commits
 - Prefix with the area: `backend:`, `frontend:`, `auth:`, `devops:`, `docs:`, `test:`.

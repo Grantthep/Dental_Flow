@@ -26,7 +26,7 @@ Without Docker, see [backend/README.md](backend/README.md).
 
 ## Docs
 - [Requirements](docs/requirements.md) · [ERD](docs/erd.md) · [API endpoints](docs/api.md) · [Roles & permissions](docs/roles.md)
-- [Contributing: branches, PRs, reviews](CONTRIBUTING.md)
+- [Contributing: branches, PRs, reviews](CONTRIBUTING.md) · **[Progress board & team notes](docs/progress.md)** · [CLAUDE.md](CLAUDE.md) (context for Claude Code)
 
 ## Patient data
 Only **synthetic (fake) data** until the clinic approves real data **and** backups are in place.
