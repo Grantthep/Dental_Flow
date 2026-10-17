@@ -22,4 +22,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 # Apply migrations, then serve. Seeding is a separate, manual step (dev only).
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]
+# Behind a reverse proxy in staging/prod, add --proxy-headers --forwarded-allow-ips=<proxy IP> so the
+# login rate limit sees real client IPs; never "*" (clients could fake their IP).
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
