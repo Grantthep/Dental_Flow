@@ -57,3 +57,5 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 ## Log
 - 2026-10-17 Grant: backend Phases 1–4 and 6 merged to `main` (PR #1).
 - 2026-10-18 Aung: auth, roles, Docker, CI, docs pushed to `devops`; PR #2 opened; CI green.
+- 2026-10-18 Aung: full Docker stack verified on Windows (Docker Desktop): migrate, seed, login, 52 tests pass in the container.
+  Tip: if you already have PostgreSQL installed locally, set `DB_PORT=5433` in `.env` (port 5432 is taken).

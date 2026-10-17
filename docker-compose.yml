@@ -14,7 +14,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./docker/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
     ports:
-      - "127.0.0.1:5432:5432"  # localhost only; not exposed to the network
+      - "127.0.0.1:${DB_PORT:-5432}:5432"  # localhost only; set DB_PORT if 5432 is taken
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
