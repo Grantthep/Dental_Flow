@@ -83,9 +83,8 @@ def test_receptionist_runs_the_front_desk(client_for, world):
     assert c.post(f"{API}/appointments/{appt['id']}/reschedule",
                   json={"start_at": at(12), "end_at": at(12, 30)}).status_code == 200
     assert c.post(f"{API}/appointments/{appt['id']}/cancel").status_code == 200
-    r = c.post(f"{API}/dentists/{d}/time-off", json={"start_at": at(15), "end_at": at(16)})
-    assert r.status_code == 201
-    assert c.delete(f"{API}/time-off/{r.json()['id']}").status_code == 204
+    # time off is clinic scheduling: admin only (docs/api.md)
+    assert c.post(f"{API}/dentists/{d}/time-off", json={"start_at": at(15), "end_at": at(16)}).status_code == 403
 
     logs = world["client"].get(f"{API}/audit-logs", params={"entity_id": appt["id"]}).json()
     assert {log["user_id"] for log in logs} == {c.user.id}

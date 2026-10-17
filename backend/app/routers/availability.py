@@ -6,13 +6,12 @@ from sqlalchemy.orm import Session
 
 from app.booking import free_slots
 from app.db import get_db
-from app.deps import STAFF, current_user, require_roles
+from app.deps import current_user, require_roles
 from app.models import Availability, Dentist, Role, TimeOff
 from app.schemas import AvailabilityBlock, Slot, TimeOffCreate, TimeOffOut
 
 router = APIRouter(tags=["availability"], dependencies=[Depends(current_user)])
 admin = [Depends(require_roles(Role.admin))]
-staff = [Depends(require_roles(*STAFF))]
 
 
 def _dentist_or_404(db: Session, dentist_id: int) -> Dentist:
@@ -56,7 +55,7 @@ def list_time_off(dentist_id: int, db: Session = Depends(get_db)):
     return db.scalars(select(TimeOff).where(TimeOff.dentist_id == dentist_id).order_by(TimeOff.start_at)).all()
 
 
-@router.post("/dentists/{dentist_id}/time-off", response_model=TimeOffOut, status_code=201, dependencies=staff)
+@router.post("/dentists/{dentist_id}/time-off", response_model=TimeOffOut, status_code=201, dependencies=admin)
 def add_time_off(dentist_id: int, body: TimeOffCreate, db: Session = Depends(get_db)):
     # Existing appointments in this period are left as they are; staff reschedule them by hand.
     _dentist_or_404(db, dentist_id)
@@ -67,7 +66,7 @@ def add_time_off(dentist_id: int, body: TimeOffCreate, db: Session = Depends(get
     return time_off
 
 
-@router.delete("/time-off/{time_off_id}", status_code=204, dependencies=staff)
+@router.delete("/time-off/{time_off_id}", status_code=204, dependencies=admin)
 def delete_time_off(time_off_id: int, db: Session = Depends(get_db)):
     time_off = db.get(TimeOff, time_off_id)
     if not time_off:
