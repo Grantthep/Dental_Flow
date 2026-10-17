@@ -48,3 +48,10 @@ Headers are matched loosely (`Name`, `Mobile`, `DOB`, `Sex`, `Allergies`, ...); 
 Dates that aren't `YYYY-MM-DD` are read as `DD/MM/YYYY` (change with `--date-format`).
 Duplicates (same name + phone) and invalid rows are skipped and listed.
 **Only import real records after the clinic approves and backups are in place.**
+
+## Note: local PostgreSQL via pgserver (Windows)
+If you use the pip `pgserver` package instead of Docker, it ships without timezone files and
+reports fail with `time zone "Asia/Yangon" not recognized`. Fix once:
+```bash
+python -c "import tzdata,os,shutil,pgserver; shutil.copytree(os.path.join(os.path.dirname(tzdata.__file__),'zoneinfo'), os.path.join(os.path.dirname(pgserver.__file__),'pginstall','share','postgresql','timezone'), dirs_exist_ok=True)"
+```

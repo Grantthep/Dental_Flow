@@ -58,12 +58,15 @@ Roles: **A** = admin, **R** = receptionist, **D** = dentist (own data only).
 |---|---|---|---|
 | GET | `/audit-logs?entity_type=&entity_id=` | A | change history |
 
-## Reports (Phase 6)
+## Reports
+Dates are clinic-local days, `date_from` and `date_to` both inclusive, max 3 years.
+Every row has `total, completed, cancelled, no_show, upcoming` (upcoming = booked + confirmed).
+
 | Method | Path | Who | Purpose |
 |---|---|---|---|
-| GET | `/reports/appointments?group_by=day\|week&date_from=&date_to=&dentist_id=` | A | counts over time |
-| GET | `/reports/dentists?date_from=&date_to=` | A | per-dentist totals |
-| GET | `/reports/rates?date_from=&date_to=` | A | no-show and cancellation rates |
+| GET | `/reports/appointments?date_from=&date_to=&group_by=day\|week\|month&dentist_id=` | A | counts per period (`period` = day / Monday / 1st of month); empty periods included as 0 |
+| GET | `/reports/dentists?date_from=&date_to=` | A | per-dentist counts + `booked_minutes` (chair time, excl. cancelled/no-show) |
+| GET | `/reports/rates?date_from=&date_to=&dentist_id=` | A | `cancellation_rate` = cancelled / total; `no_show_rate` = no_show / (completed + no_show); `null` if no data |
 
 ## Error format
 Booking errors:
