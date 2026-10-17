@@ -12,6 +12,7 @@ pip install -r requirements.txt
 # point at your PostgreSQL (default: postgres:postgres@localhost:5432/dentalflow)
 set DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/dentalflow
 
+set CLINIC_TZ=Asia/Yangon           # clinic timezone for working hours (default Asia/Yangon)
 alembic upgrade head              # create tables
 python seed.py                    # fake dentists + 50 patients
 fastapi dev app/main.py           # http://localhost:8000/docs

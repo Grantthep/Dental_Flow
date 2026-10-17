@@ -4,6 +4,7 @@ psycopg[binary]==3.3.6
 alembic==1.20.0
 pydantic==2.14.1
 email-validator==2.3.0
+tzdata==2026.5  # zoneinfo data on Windows
 
 # dev
 Faker==40.43.0

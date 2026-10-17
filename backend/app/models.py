@@ -13,7 +13,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, ExcludeConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 
@@ -145,6 +145,12 @@ class Appointment(TimestampMixin, Base):
     reason: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+
+    patient: Mapped[Patient] = relationship(lazy="joined")
+    dentist: Mapped[Dentist] = relationship(lazy="joined")
+
+
+ACTIVE_STATUSES = (AppointmentStatus.booked, AppointmentStatus.confirmed, AppointmentStatus.completed)
 
 
 class AuditLog(Base):

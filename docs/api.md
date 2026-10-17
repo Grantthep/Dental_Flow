@@ -24,7 +24,6 @@ Roles: **A** = admin, **R** = receptionist, **D** = dentist (own data only).
 | POST | `/patients` | A R | create |
 | GET | `/patients/{id}` | A R D | detail |
 | PATCH | `/patients/{id}` | A R | update / deactivate |
-| GET | `/patients/{id}/appointments` | A R D | patient's appointment history |
 
 ## Dentists
 | Method | Path | Who | Purpose |
@@ -47,10 +46,10 @@ Roles: **A** = admin, **R** = receptionist, **D** = dentist (own data only).
 ## Appointments
 | Method | Path | Who | Purpose |
 |---|---|---|---|
-| GET | `/appointments?date_from=&date_to=&dentist_id=&patient_id=&status=` | all | calendar / list (D sees own only) |
+| GET | `/appointments?date_from=&date_to=&dentist_id=&patient_id=&status=&page=&size=` | all | calendar / list / patient history; `status` can repeat; D sees own only (after auth) |
 | POST | `/appointments` | A R | book — `409` if slot taken |
 | GET | `/appointments/{id}` | all | detail |
-| PATCH | `/appointments/{id}` | A R D | update notes / status |
+| PATCH | `/appointments/{id}` | A R D | update notes / reason / status (`booked→confirmed→completed`; completed, cancelled, no_show are final → `409 bad_status`) |
 | POST | `/appointments/{id}/reschedule` | A R | new start/end — `409` if slot taken |
 | POST | `/appointments/{id}/cancel` | A R | set status `cancelled` |
 
@@ -66,10 +65,14 @@ Roles: **A** = admin, **R** = receptionist, **D** = dentist (own data only).
 | GET | `/reports/dentists?date_from=&date_to=` | A | per-dentist totals |
 | GET | `/reports/rates?date_from=&date_to=` | A | no-show and cancellation rates |
 
-## Error format (proposal — agree with team in Week 5)
+## Error format
+Booking errors:
 ```json
 { "detail": "Dentist already has an appointment at this time", "code": "slot_taken" }
 ```
+Codes: `slot_taken`, `patient_busy`, `outside_hours`, `time_off`, `in_past`, `bad_status`.
+Other errors use FastAPI's default `{ "detail": ... }` (422 validation errors have a list in `detail`).
+
 | Status | When |
 |---|---|
 | 400 / 422 | invalid input |
