@@ -1,0 +1,9 @@
+line-length = 130
+extend-exclude = ["alembic/versions"]
+
+[lint]
+# Real errors only (pyflakes + pycodestyle); style is left to code review.
+select = ["E", "F"]
+
+[lint.per-file-ignores]
+"alembic/env.py" = ["E402"]

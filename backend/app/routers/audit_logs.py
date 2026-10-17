@@ -3,10 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import AuditLog
+from app.deps import require_roles
+from app.models import AuditLog, Role
 from app.schemas import AuditLogOut
 
-router = APIRouter(prefix="/audit-logs", tags=["audit"])
+router = APIRouter(prefix="/audit-logs", tags=["audit"], dependencies=[Depends(require_roles(Role.admin))])
 
 
 @router.get("", response_model=list[AuditLogOut])

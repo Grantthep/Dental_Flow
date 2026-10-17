@@ -3,7 +3,7 @@ from typing import Annotated, Generic, TypeVar
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
-from app.models import AppointmentStatus
+from app.models import AppointmentStatus, Role
 
 T = TypeVar("T")
 
@@ -180,3 +180,44 @@ class AuditLogOut(BaseModel):
     entity_id: int
     changes: dict | None
     created_at: datetime
+
+
+# ---------- Users / auth ----------
+Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    full_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)]
+    role: Role
+    password: Password
+
+
+class UserUpdate(BaseModel):
+    full_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)] | None = None
+    role: Role | None = None
+    is_active: bool | None = None
+    password: Password | None = None  # admin password reset
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    full_name: str
+    role: Role
+    is_active: bool
+    created_at: datetime
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # seconds
+    user: UserOut
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: Password

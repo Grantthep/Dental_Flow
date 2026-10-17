@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.booking import CLINIC_TZ
 from app.db import get_db
+from app.models import Role
+from app.deps import require_roles
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+router = APIRouter(prefix="/reports", tags=["reports"], dependencies=[Depends(require_roles(Role.admin))])
 
 MAX_DAYS = 3 * 366
 

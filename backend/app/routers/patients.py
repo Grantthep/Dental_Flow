@@ -3,10 +3,12 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.deps import STAFF, current_user, require_roles
 from app.models import Patient
 from app.schemas import Page, PatientCreate, PatientOut, PatientUpdate
 
-router = APIRouter(prefix="/patients", tags=["patients"])
+router = APIRouter(prefix="/patients", tags=["patients"], dependencies=[Depends(current_user)])
+write = [Depends(require_roles(*STAFF))]
 
 
 def _get_or_404(db: Session, patient_id: int) -> Patient:
@@ -46,7 +48,7 @@ def list_patients(
     return Page(items=items, total=total, page=page, size=size)
 
 
-@router.post("", response_model=PatientOut, status_code=201)
+@router.post("", response_model=PatientOut, status_code=201, dependencies=write)
 def create_patient(body: PatientCreate, db: Session = Depends(get_db)):
     patient = Patient(**body.model_dump())
     db.add(patient)
@@ -60,7 +62,7 @@ def get_patient(patient_id: int, db: Session = Depends(get_db)):
     return _get_or_404(db, patient_id)
 
 
-@router.patch("/{patient_id}", response_model=PatientOut)
+@router.patch("/{patient_id}", response_model=PatientOut, dependencies=write)
 def update_patient(patient_id: int, body: PatientUpdate, db: Session = Depends(get_db)):
     patient = _get_or_404(db, patient_id)
     for field, value in body.model_dump(exclude_unset=True).items():

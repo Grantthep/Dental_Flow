@@ -8,11 +8,12 @@ from sqlalchemy.orm import Session
 from app.audit import audit
 from app.booking import BookingError, check_bookable
 from app.db import get_db
-from app.deps import current_user_id
-from app.models import Appointment, AppointmentStatus as S
+from app.deps import STAFF, current_user, current_user_id, own_dentist_id, require_roles
+from app.models import Appointment, AppointmentStatus as S, Role, User
 from app.schemas import AppointmentCreate, AppointmentOut, AppointmentUpdate, Page, TimeRange
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
+staff = [Depends(require_roles(*STAFF))]
 
 # Allowed status changes; completed / cancelled / no_show are final.
 TRANSITIONS = {
@@ -26,9 +27,15 @@ def _snapshot(appt: Appointment, fields=TRACKED) -> dict:
     return {f: getattr(appt, f) for f in fields}
 
 
-def _get_or_404(db: Session, appointment_id: int) -> Appointment:
+# Dentists may only change these on their own appointments (cancel / reschedule is front desk).
+DENTIST_FIELDS = {"status", "notes"}
+DENTIST_STATUSES = {S.completed, S.no_show}
+
+
+def _get_or_404(db: Session, appointment_id: int, user: User | None = None) -> Appointment:
     appt = db.get(Appointment, appointment_id)
-    if not appt:
+    # A dentist sees other dentists' appointments as not found.
+    if not appt or (user and user.role == Role.dentist and appt.dentist_id != own_dentist_id(db, user)):
         raise HTTPException(404, "Appointment not found")
     return appt
 
@@ -62,7 +69,13 @@ def list_appointments(
     page: int = Query(1, ge=1),
     size: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    user: User = Depends(current_user),
 ):
+    if user.role == Role.dentist:
+        own = own_dentist_id(db, user)
+        if dentist_id and dentist_id != own:
+            raise HTTPException(403, "Dentists can only view their own appointments")
+        dentist_id = own
     stmt = select(Appointment)
     if date_from:
         stmt = stmt.where(Appointment.start_at >= date_from)
@@ -79,7 +92,7 @@ def list_appointments(
     return Page(items=items, total=total, page=page, size=size)
 
 
-@router.post("", response_model=AppointmentOut, status_code=201)
+@router.post("", response_model=AppointmentOut, status_code=201, dependencies=staff)
 def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db), user_id=Depends(current_user_id)):
     check_bookable(db, body.dentist_id, body.patient_id, body.start_at, body.end_at)
     appt = Appointment(**body.model_dump(), created_by=user_id)
@@ -92,16 +105,21 @@ def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db), u
 
 
 @router.get("/{appointment_id}", response_model=AppointmentOut)
-def get_appointment(appointment_id: int, db: Session = Depends(get_db)):
-    return _get_or_404(db, appointment_id)
+def get_appointment(appointment_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    return _get_or_404(db, appointment_id, user)
 
 
 @router.patch("/{appointment_id}", response_model=AppointmentOut)
 def update_appointment(
-    appointment_id: int, body: AppointmentUpdate, db: Session = Depends(get_db), user_id=Depends(current_user_id)
+    appointment_id: int, body: AppointmentUpdate, db: Session = Depends(get_db), user: User = Depends(current_user)
 ):
-    appt = _get_or_404(db, appointment_id)
+    user_id = user.id
+    appt = _get_or_404(db, appointment_id, user)
     changes = body.model_dump(exclude_unset=True)
+    if user.role == Role.dentist and changes.keys() - DENTIST_FIELDS:
+        raise HTTPException(403, "Dentists can only change status and notes")
+    if user.role == Role.dentist and changes.get("status", S.completed) not in DENTIST_STATUSES:
+        raise HTTPException(403, "Dentists can only mark appointments completed or no-show")
     before = _snapshot(appt, changes)
     if "status" in changes:
         _set_status(appt, changes.pop("status"))
@@ -113,7 +131,7 @@ def update_appointment(
     return appt
 
 
-@router.post("/{appointment_id}/reschedule", response_model=AppointmentOut)
+@router.post("/{appointment_id}/reschedule", response_model=AppointmentOut, dependencies=staff)
 def reschedule_appointment(
     appointment_id: int, body: TimeRange, db: Session = Depends(get_db), user_id=Depends(current_user_id)
 ):
@@ -129,7 +147,7 @@ def reschedule_appointment(
     return appt
 
 
-@router.post("/{appointment_id}/cancel", response_model=AppointmentOut)
+@router.post("/{appointment_id}/cancel", response_model=AppointmentOut, dependencies=staff)
 def cancel_appointment(appointment_id: int, db: Session = Depends(get_db), user_id=Depends(current_user_id)):
     appt = _get_or_404(db, appointment_id)
     before = _snapshot(appt, ("status",))
