@@ -87,7 +87,8 @@ erDiagram
 | Table | Constraint | Why |
 |---|---|---|
 | appointments | `CHECK (end_at > start_at)` | no zero/negative length |
-| appointments | `EXCLUDE USING gist (dentist_id WITH =, tstzrange(start_at, end_at) WITH &&) WHERE (status NOT IN ('cancelled','no_show'))` | **double-booking prevention in the DB** (needs `btree_gist` extension) |
+| appointments | `EXCLUDE USING gist (int4range(dentist_id, dentist_id, '[]') WITH =, tstzrange(start_at, end_at) WITH &&) WHERE (status NOT IN ('cancelled','no_show'))` | **double-booking prevention in the DB** (the int4range trick avoids needing the `btree_gist` extension) |
+| appointments | same as above on `patient_id` | a patient can't be in two appointments at once |
 | availability | `CHECK (end_time > start_time)`, `CHECK (day_of_week BETWEEN 0 AND 6)` | valid blocks |
 | time_off | `CHECK (end_at > start_at)` | valid period |
 | users | `UNIQUE (email)` | login |
