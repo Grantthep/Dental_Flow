@@ -15,8 +15,8 @@ After V1 ships. Rough priority order inside each list; pick with the clinic.
 1. **Appointment reminders** (SMS / email / Viber) the day before. Needs: a scheduled job, a provider account,
    patient consent field, `reminder_sent_at` on appointments. Expected to cut no-shows, so measure the
    no-show rate (`/reports/rates`) before and after.
-2. **Treatment history**: per-appointment treatments (tooth number, procedure, notes) on the patient page.
-   New table `treatments (appointment_id, tooth, procedure_code, notes)`.
+2. ~~Treatment history~~ — **backend done** (`/appointments/{id}/treatments`, `/patients/{id}/treatments`); needs the frontend
+   (patient page + appointment page). Later: procedure price list → billing.
 3. **Billing and payments**: price list, invoice per appointment, paid / unpaid, daily cash report.
    Money in integer minor units (no floats); every change in the audit log.
 4. Patient attachments (X-rays, consent forms) — needs file storage and backups that include it.

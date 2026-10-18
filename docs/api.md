@@ -57,6 +57,13 @@ Every endpoint below except `/auth/login` needs `Authorization: Bearer <token>`.
 | POST | `/appointments/{id}/reschedule` | A R | new start/end — `409` if slot taken |
 | POST | `/appointments/{id}/cancel` | A R | set status `cancelled` |
 
+## Treatments (append-only: no edit/delete, corrections are new entries)
+| Method | Path | Who | Purpose |
+|---|---|---|---|
+| GET | `/appointments/{id}/treatments` | all (D own appts) | treatments recorded at this appointment |
+| POST | `/appointments/{id}/treatments` | A, D own | `{tooth?: "36" (FDI), procedure, notes?}`; `409 too_early` before start, `409 bad_status` if cancelled / no-show |
+| GET | `/patients/{id}/treatments` | all | patient's full history, newest first, with appointment date and dentist |
+
 ## Audit
 | Method | Path | Who | Purpose |
 |---|---|---|---|

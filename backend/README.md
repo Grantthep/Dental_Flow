@@ -62,6 +62,8 @@ CSV or Excel (.xlsx). Dry run first — it only reports, writes nothing:
 python import_patients.py clinic_patients.xlsx --errors bad_rows.csv
 python import_patients.py clinic_patients.xlsx --commit
 ```
+Give the clinic [`import_template.csv`](import_template.csv) as the format to export to.
+Rehearsed on a copy of the dev DB (2026-10-18): 503 rows → 500 imported, 3 bad rows reported, re-run imports 0.
 Headers are matched loosely (`Name`, `Mobile`, `DOB`, `Sex`, `Allergies`, ...); see the top of `import_patients.py`.
 Dates that aren't `YYYY-MM-DD` are read as `DD/MM/YYYY` (change with `--date-format`).
 Duplicates (same name + phone) and invalid rows are skipped and listed.

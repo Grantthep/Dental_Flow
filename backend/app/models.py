@@ -165,3 +165,19 @@ class AuditLog(Base):
     entity_id: Mapped[int]
     changes: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class Treatment(Base):
+    """What was done at an appointment. Append-only: corrections are new entries (it's a medical record)."""
+
+    __tablename__ = "treatments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(ForeignKey("appointments.id"), index=True)
+    tooth: Mapped[str | None] = mapped_column(String(10))  # FDI number, e.g. "36"; empty = whole mouth
+    procedure: Mapped[str] = mapped_column(String(150))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    appointment: Mapped[Appointment] = relationship(lazy="joined")

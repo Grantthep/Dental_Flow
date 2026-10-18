@@ -10,8 +10,10 @@ from app.audit import audit
 from app.booking import BookingError, check_bookable
 from app.db import get_db
 from app.deps import STAFF, current_user, current_user_id, own_dentist_id, require_roles
-from app.models import Appointment, AppointmentStatus as S, Role, User
-from app.schemas import AppointmentCreate, AppointmentOut, AppointmentUpdate, Page, TimeRange
+from app.models import Appointment, AppointmentStatus as S, Role, Treatment, User
+from app.schemas import (
+    AppointmentCreate, AppointmentOut, AppointmentUpdate, Page, TimeRange, TreatmentCreate, TreatmentOut,
+)
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 staff = [Depends(require_roles(*STAFF))]
@@ -157,3 +159,30 @@ def cancel_appointment(appointment_id: int, db: Session = Depends(get_db), user_
     _commit(db)
     db.refresh(appt)
     return appt
+
+
+@router.get("/{appointment_id}/treatments", response_model=list[TreatmentOut])
+def list_treatments(appointment_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    _get_or_404(db, appointment_id, user)
+    return db.scalars(
+        select(Treatment).where(Treatment.appointment_id == appointment_id).order_by(Treatment.id)
+    ).all()
+
+
+@router.post("/{appointment_id}/treatments", response_model=TreatmentOut, status_code=201,
+             dependencies=[Depends(require_roles(Role.admin, Role.dentist))])
+def add_treatment(
+    appointment_id: int, body: TreatmentCreate, db: Session = Depends(get_db), user: User = Depends(current_user)
+):
+    appt = _get_or_404(db, appointment_id, user)
+    if appt.status in (S.cancelled, S.no_show):
+        raise BookingError(409, "bad_status", f"Cannot add treatment to a {appt.status.value} appointment")
+    if appt.start_at > datetime.now(UTC):
+        raise BookingError(409, "too_early", "Cannot add treatment before the appointment starts")
+    treatment = Treatment(appointment_id=appt.id, created_by=user.id, **body.model_dump())
+    db.add(treatment)
+    db.flush()
+    audit(db, user.id, "create", "treatment", treatment.id, after=body.model_dump())
+    db.commit()
+    db.refresh(treatment)
+    return treatment

@@ -16,6 +16,8 @@ checked by `backend/tests/test_permissions.py` — change both together.
 | Appointments: view | ✅ all | ✅ all | own only |
 | Appointments: book, reschedule, cancel | ✅ | ✅ | ❌ |
 | Appointments: edit reason / notes / status | ✅ | ✅ | own only: notes, and status → `completed` / `no_show` |
+| Treatment history: view | ✅ | ✅ | ✅ (own appointments; all for a patient's history) |
+| Treatment history: add (append-only) | ✅ | ❌ | own appointments |
 | Audit log | ✅ | ❌ | ❌ |
 | Reports / analytics | ✅ | ❌ | ❌ |
 

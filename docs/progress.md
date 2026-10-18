@@ -21,6 +21,8 @@ Plan week ~8 of 16 (Integration & Testing). All three branches merged to `main`,
 - ✅ Appointments, availability, slots, double-booking prevention, reschedule/cancel, audit log
 - ✅ Booking hardening, indexes, patient CSV/Excel import tool
 - ✅ SQL analytics + report APIs (Phase 6)
+- ✅ V2 treatment history (backend): append-only, admin + own dentist can add; frontend not started
+- ✅ Import rehearsed on a copy of the DB; `backend/import_template.csv` for the clinic
 - ✅ Phase 7 docs: production migration steps (backend/README.md), [backlog.md](backlog.md) V2/V3
 - ✅ PR #2 merged; repo audit done (2026-10-18): fixed booking race → 500, seed.py dev-only guard, race test
 - ⬜ Repo settings (owner only): branch protection on `main` (require PR, 1 approval, CI checks "Backend lint + tests" and "Docker stack smoke test")
@@ -52,6 +54,8 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 - 2026-10-18 Grant → Aung: from the audit, your area: (1) `ratelimit.py` never removes keys, so failed
   logins with random emails grow memory forever — `pop` empty keys in `_recent`; (2) password change/reset
   doesn't invalidate existing tokens (valid 8 h) — e.g. `password_changed_at` vs token `iat`.
+- 2026-10-18 Grant → Aye Nyein Moe: new API for later: treatment history (`GET/POST /appointments/{id}/treatments`,
+  `GET /patients/{id}/treatments`), see docs/api.md. Show it on the patient and appointment pages after login works.
 - 2026-10-18 Aung → Aye Nyein Moe: login + token rules for the UI are in [roles.md](roles.md)
   ("Frontend notes"). Dev logins after `seed.py`: `admin@example.com`, `reception@example.com`,
   `dentist1@example.com`, password `dentalflow-dev`. CORS allows `http://localhost:3000`.
@@ -66,3 +70,4 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
   Tip: if you already have PostgreSQL installed locally, set `DB_PORT=5433` in `.env` (port 5432 is taken).
 - 2026-10-18 Grant: repo audit; backend fixes on `backend` (race → 409 not 500, seed.py dev-only, list date filters need a timezone). Handoffs added.
 - 2026-10-18 Grant: Phase 7 backend docs + V2/V3 backlog (PR #4).
+- 2026-10-18 Grant: treatment history API (V2), import rehearsal + template, final DB review (no changes needed). Remaining backend work is manual (clinic, staging, production).

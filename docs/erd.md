@@ -11,6 +11,7 @@ erDiagram
     dentists ||--o{ time_off : "takes"
     dentists ||--o{ appointments : "treats"
     patients ||--o{ appointments : "books"
+    appointments ||--o{ treatments : "records"
 
     users {
         int id PK
@@ -71,6 +72,15 @@ erDiagram
         text notes
         timestamptz created_at
         timestamptz updated_at
+    }
+    treatments {
+        int id PK
+        int appointment_id FK
+        string tooth "FDI, e.g. 36; null = whole mouth"
+        string procedure
+        text notes
+        int created_by FK "users.id"
+        timestamptz created_at
     }
     audit_logs {
         int id PK
