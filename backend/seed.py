@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 
 from app.db import SessionLocal
 from app.models import Availability, Dentist, Patient, Role, User
-from app.security import hash_password
+from app.security import APP_ENV, hash_password
 
 DENTISTS = [
     ("Dr. Aye Chan", "General dentistry"),
@@ -30,6 +30,8 @@ WEEKLY_HOURS = [(d, time(9), time(12)) for d in range(5)] + [
 
 
 def seed(n_patients: int = 50) -> None:
+    if APP_ENV != "development":
+        sys.exit(f"seed.py creates logins with a known password; refusing to run with APP_ENV={APP_ENV}.")
     fake = Faker()
     Faker.seed(42)
     with SessionLocal() as db:

@@ -4,13 +4,14 @@ Everyone updates this at the end of a work session (or asks Claude to). Keep it 
 Full task list: the weekly plan (DentalFlow_Weekly_Plan.docx). ✅ done · 🟡 in progress / partly · ⬜ not started
 
 ## Where we are
-Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't been pushed yet.
+Plan week ~8 of 16 (Integration & Testing). All three branches merged to `main`, CI green.
+**Blocker:** the frontend has no login yet, so every API call on `main` gets 401 (see Handoffs).
 
 | Area | Status |
 |---|---|
 | Backend & DB (Grant) | ✅ Phases 1–4 + Phase 6 analytics APIs, merged to `main` (PR #1) |
-| Auth, DevOps & QA (Aung) | ✅ Weeks 1–8 backend-side work on `devops`, CI green — **PR #2 waiting for review** |
-| Frontend (Aye Nyein Moe) | ⬜ No `frontend` branch on GitHub yet |
+| Auth, DevOps & QA (Aung) | ✅ Weeks 1–8 backend-side work, merged (PR #2) |
+| Frontend (Aye Nyein Moe) | 🟡 Phases 1–6 UI merged (PR #3); **login not wired up yet** |
 
 ## Checklist by member
 
@@ -20,13 +21,12 @@ Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't be
 - ✅ Appointments, availability, slots, double-booking prevention, reschedule/cancel, audit log
 - ✅ Booking hardening, indexes, patient CSV/Excel import tool
 - ✅ SQL analytics + report APIs (Phase 6)
-- ⬜ Review PR #2 (auth touches your routers + `deps.py`)
+- ✅ PR #2 merged; repo audit done (2026-10-18): fixed booking race → 500, seed.py dev-only guard, race test
 - ⬜ Repo settings (owner only): branch protection on `main` (require PR, 1 approval, CI checks "Backend lint + tests" and "Docker stack smoke test")
 
 ### Aye Nyein Moe — Frontend
-- ⬜ Push the Next.js project to a `frontend` branch (CI builds it automatically once `frontend/package.json` exists)
-- ⬜ Login page: see "Frontend notes" in [roles.md](roles.md)
-- ⬜ Calendar, booking form, patient search, dentist dashboard, role-based page hiding
+- ✅ Next.js project, calendar, booking form, patient search/detail, dentist dashboard, reports page (PR #3)
+- ⬜ **Login page + send the token** (blocker, see Handoffs); replace the role switcher in `lib/role.tsx` with `/auth/me`
 - ⬜ Add `frontend/Dockerfile` (or ask Aung) so it joins `docker-compose.yml`
 
 ### Aung Sett Hpone — Auth, DevOps & QA
@@ -44,9 +44,13 @@ Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't be
 ## Handoffs / questions
 Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 
-- 2026-10-18 Aung → Grant: please review PR #2. I added role checks to your routers and changed
-  `deps.current_user_id` to return the logged-in user (audit logs now have real `user_id`).
-  Time off is admin-only as in your api.md. Also please turn on branch protection for `main`.
+- 2026-10-18 Grant → Aye Nyein Moe (+ Aung): **blocker** — `frontend/src/lib/api.ts` sends no
+  `Authorization` header and there's no login page, so on `main` every page gets 401. Needs: `/login` page
+  (form post to `/api/v1/auth/login`), `Bearer` token on every request, redirect to `/login` on 401,
+  role from `/auth/me` instead of the switcher. Details in roles.md "Frontend notes".
+- 2026-10-18 Grant → Aung: from the audit, your area: (1) `ratelimit.py` never removes keys, so failed
+  logins with random emails grow memory forever — `pop` empty keys in `_recent`; (2) password change/reset
+  doesn't invalidate existing tokens (valid 8 h) — e.g. `password_changed_at` vs token `iat`.
 - 2026-10-18 Aung → Aye Nyein Moe: login + token rules for the UI are in [roles.md](roles.md)
   ("Frontend notes"). Dev logins after `seed.py`: `admin@example.com`, `reception@example.com`,
   `dentist1@example.com`, password `dentalflow-dev`. CORS allows `http://localhost:3000`.
@@ -59,3 +63,4 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 - 2026-10-18 Aung: auth, roles, Docker, CI, docs pushed to `devops`; PR #2 opened; CI green.
 - 2026-10-18 Aung: full Docker stack verified on Windows (Docker Desktop): migrate, seed, login, 52 tests pass in the container.
   Tip: if you already have PostgreSQL installed locally, set `DB_PORT=5433` in `.env` (port 5432 is taken).
+- 2026-10-18 Grant: repo audit; backend fixes on `backend` (race → 409 not 500, seed.py dev-only, list date filters need a timezone). Handoffs added.

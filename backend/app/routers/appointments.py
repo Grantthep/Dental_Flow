@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import AwareDatetime
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -20,10 +21,9 @@ TRANSITIONS = {
     S.booked: {S.confirmed, S.completed, S.cancelled, S.no_show},
     S.confirmed: {S.completed, S.cancelled, S.no_show},
 }
-TRACKED = ("start_at", "end_at", "status", "reason", "notes")
 
 
-def _snapshot(appt: Appointment, fields=TRACKED) -> dict:
+def _snapshot(appt: Appointment, fields) -> dict:
     return {f: getattr(appt, f) for f in fields}
 
 
@@ -40,10 +40,11 @@ def _get_or_404(db: Session, appointment_id: int, user: User | None = None) -> A
     return appt
 
 
-def _commit(db: Session):
+def _commit(db: Session, step=None):
     # Two requests can pass check_bookable at the same moment; the exclusion constraint catches the loser.
+    # It fires on whichever write reaches the DB first: flush() on create, commit() otherwise.
     try:
-        db.commit()
+        (step or db.commit)()
     except IntegrityError as e:
         db.rollback()
         if "overlap" in str(e.orig):
@@ -61,8 +62,8 @@ def _set_status(appt: Appointment, new: S):
 
 @router.get("", response_model=Page[AppointmentOut])
 def list_appointments(
-    date_from: datetime | None = Query(None, description="start_at >= this"),
-    date_to: datetime | None = Query(None, description="start_at < this"),
+    date_from: AwareDatetime | None = Query(None, description="start_at >= this (with timezone)"),
+    date_to: AwareDatetime | None = Query(None, description="start_at < this (with timezone)"),
     dentist_id: int | None = None,
     patient_id: int | None = None,
     status: list[S] | None = Query(None),
@@ -97,7 +98,7 @@ def create_appointment(body: AppointmentCreate, db: Session = Depends(get_db), u
     check_bookable(db, body.dentist_id, body.patient_id, body.start_at, body.end_at)
     appt = Appointment(**body.model_dump(), created_by=user_id)
     db.add(appt)
-    db.flush()
+    _commit(db, db.flush)
     audit(db, user_id, "create", "appointment", appt.id, after=_snapshot(appt, ("start_at", "end_at", "reason")))
     _commit(db)
     db.refresh(appt)
