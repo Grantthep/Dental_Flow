@@ -79,6 +79,7 @@ Booking errors:
 ```
 Codes: `slot_taken`, `patient_busy`, `outside_hours`, `time_off`, `in_past`, `bad_status`, `too_early` (completed / no-show before the start time).
 Other errors use FastAPI's default `{ "detail": ... }` (422 validation errors have a list in `detail`).
+Date-time query filters (`date_from`, `date_to` on `/appointments`) must include a timezone, e.g. `2026-10-20T00:00:00+06:30` or `...Z`.
 
 | Status | When |
 |---|---|

@@ -95,6 +95,7 @@ erDiagram
 | dentists | `UNIQUE (user_id)` | one account per dentist |
 
 ## Indexes (initial)
+- `appointments (start_at)` — all-dentists calendar, reports
 - `appointments (dentist_id, start_at)` — calendar by dentist/date
 - `appointments (patient_id, start_at)` — patient history
 - `patients (last_name, first_name)`, `patients (phone)` — search

@@ -21,6 +21,7 @@ Plan week ~8 of 16 (Integration & Testing). All three branches merged to `main`,
 - ✅ Appointments, availability, slots, double-booking prevention, reschedule/cancel, audit log
 - ✅ Booking hardening, indexes, patient CSV/Excel import tool
 - ✅ SQL analytics + report APIs (Phase 6)
+- ✅ Phase 7 docs: production migration steps (backend/README.md), [backlog.md](backlog.md) V2/V3
 - ✅ PR #2 merged; repo audit done (2026-10-18): fixed booking race → 500, seed.py dev-only guard, race test
 - ⬜ Repo settings (owner only): branch protection on `main` (require PR, 1 approval, CI checks "Backend lint + tests" and "Docker stack smoke test")
 
@@ -64,3 +65,4 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 - 2026-10-18 Aung: full Docker stack verified on Windows (Docker Desktop): migrate, seed, login, 52 tests pass in the container.
   Tip: if you already have PostgreSQL installed locally, set `DB_PORT=5433` in `.env` (port 5432 is taken).
 - 2026-10-18 Grant: repo audit; backend fixes on `backend` (race → 409 not 500, seed.py dev-only, list date filters need a timezone). Handoffs added.
+- 2026-10-18 Grant: Phase 7 backend docs + V2/V3 backlog (PR #4).
