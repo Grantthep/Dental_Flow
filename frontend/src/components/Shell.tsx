@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { can, useRole, useSetRole } from "@/lib/role";
+import { can, useAuth, useRole } from "@/lib/role";
 import type { Role } from "@/lib/types";
 
 const NAV: { href: string; label: string; show?: (r: Role) => boolean }[] = [
@@ -21,8 +21,9 @@ function isActive(pathname: string, href: string) {
 export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const role = useRole();
-  const setRole = useSetRole();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  if (pathname === "/login") return <>{children}</>;
   const items = NAV.filter((n) => !n.show || n.show(role));
 
   return (
@@ -67,19 +68,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <div className="min-w-0 flex-1">
         <header className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-2.5 md:px-8">
-          <label htmlFor="role" className="text-xs text-slate-500">
-            Viewing as
-          </label>
-          <select
-            id="role"
-            value={role}
-            onChange={(e) => setRole(e.target.value as Role)}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
-          >
-            <option value="admin">Admin</option>
-            <option value="receptionist">Receptionist</option>
-            <option value="dentist">Dentist</option>
-          </select>
+          <span className="text-sm text-slate-600">
+            {user?.full_name} <span className="text-xs text-slate-400">({role})</span>
+          </span>
+          <button type="button" onClick={logout} className="rounded-md border border-slate-300 px-2 py-1 text-sm hover:bg-slate-50">
+            Log out
+          </button>
         </header>
         <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">{children}</main>
       </div>

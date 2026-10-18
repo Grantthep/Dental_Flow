@@ -37,8 +37,9 @@ npm run build
 | `src/lib/time.ts` | clinic-timezone date/time helpers |
 | `src/lib/role.tsx` | current role + what each role may do |
 
-## Roles (until login exists)
-There is no login yet, so the top bar has a **Viewing as** switcher (admin / receptionist / dentist) that
-hides pages and buttons the way the real roles will. When Member 3's auth lands:
-- set the role from `/auth/me` in `src/lib/role.tsx` and remove the switcher in `Shell.tsx`;
-- add the `Authorization` header in `request()` in `src/lib/api.ts`.
+## Login and roles
+`/login` posts the email + password to `/api/v1/auth/login` and keeps the token in localStorage (`df-token`).
+`src/lib/api.ts` sends it as `Authorization: Bearer ...` on every call; any `401` clears it and goes back to `/login`.
+`src/lib/role.tsx` loads the user from `/auth/me`; pages use `useRole()` / `can.*` only to hide things —
+the backend enforces the real rules ([docs/roles.md](../docs/roles.md)).
+Dev logins after `seed.py`: `admin@example.com`, `reception@example.com`, `dentist1@example.com`, password `dentalflow-dev`.
