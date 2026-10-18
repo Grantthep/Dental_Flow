@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { DentistSelect, useDentists } from "@/components/DentistSelect";
+import { DentistSelect, ownDentistId, useDentists } from "@/components/DentistSelect";
 import { patientName } from "@/components/PatientPicker";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card, ErrorBox, Loading, PageHeader } from "@/components/ui/States";
 import { Table } from "@/components/ui/Table";
 import { api, errorText } from "@/lib/api";
-import { can, useRole } from "@/lib/role";
+import { can, useAuth, useRole } from "@/lib/role";
 import { addDays, clinicTime, fmtDay, fmtTime, today } from "@/lib/time";
 import type { Appointment, AppointmentStatus } from "@/lib/types";
 import { useFetch } from "@/lib/useFetch";
@@ -25,8 +25,10 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default function Dashboard() {
   const role = useRole();
+  const { user } = useAuth();
   const dentists = useDentists();
-  const [dentistId, setDentistId] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const dentistId = role === "dentist" ? ownDentistId(dentists.data, user?.id) : picked;
   const [actionError, setActionError] = useState<string>();
   const day = today();
 
@@ -63,9 +65,11 @@ export default function Dashboard() {
         actions={can.book(role) && <ButtonLink href="/appointments/new">New booking</ButtonLink>}
       />
 
-      <div className="mb-6 max-w-xs">
-        <DentistSelect dentists={dentists.data} value={dentistId} onChange={setDentistId} allLabel="All dentists" />
-      </div>
+      {role !== "dentist" && (
+        <div className="mb-6 max-w-xs">
+          <DentistSelect dentists={dentists.data} value={picked} onChange={setPicked} allLabel="All dentists" />
+        </div>
+      )}
 
       {appts.error !== undefined ? (
         <ErrorBox error={appts.error} onRetry={appts.reload} />
@@ -136,7 +140,7 @@ export default function Dashboard() {
                   cell: (a) =>
                     (a.status === "booked" || a.status === "confirmed") && (
                       <div className="flex gap-1">
-                        {a.status === "booked" && (
+                        {a.status === "booked" && can.confirm(role) && (
                           <Button variant="ghost" className="!px-2 !py-1" onClick={() => setStatus(a, "confirmed")}>
                             Confirm
                           </Button>

@@ -7,6 +7,10 @@ import { Select } from "./ui/Input";
 
 export const useDentists = () => useFetch(api.dentists.list, []);
 
+/** A dentist login's own dentist profile; the backend only shows dentists their own appointments. */
+export const ownDentistId = (dentists: Dentist[] | undefined, userId: number | undefined) =>
+  dentists?.find((d) => d.user_id === userId)?.id ?? null;
+
 /** Dentist dropdown. `allLabel` adds an "all dentists" option with value null. */
 export function DentistSelect({
   dentists,

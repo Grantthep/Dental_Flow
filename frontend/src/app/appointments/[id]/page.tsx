@@ -102,7 +102,7 @@ export default function AppointmentPage() {
         <Card title="Status">
           {open ? (
             <div className="flex flex-wrap gap-2">
-              {a.status === "booked" && (
+              {a.status === "booked" && can.confirm(role) && (
                 <Button
                   variant="secondary"
                   disabled={busy}
@@ -123,7 +123,13 @@ export default function AppointmentPage() {
           )}
         </Card>
 
-        <NotesCard key={a.updated_at} appt={a} disabled={busy} onSave={(body) => run(() => api.appointments.update(a.id, body))} />
+        <NotesCard
+          key={a.updated_at}
+          appt={a}
+          disabled={busy}
+          canEditReason={can.editReason(role)}
+          onSave={(body) => run(() => api.appointments.update(a.id, body))}
+        />
       </div>
 
       <Modal open={rescheduleOpen} onClose={() => setRescheduleOpen(false)} title="Reschedule">
@@ -171,11 +177,13 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
 function NotesCard({
   appt,
   disabled,
+  canEditReason,
   onSave,
 }: {
   appt: Appointment;
   disabled: boolean;
-  onSave: (b: { reason: string | null; notes: string | null }) => void;
+  canEditReason: boolean;
+  onSave: (b: { reason?: string | null; notes: string | null }) => void;
 }) {
   const [reason, setReason] = useState(appt.reason ?? "");
   const [notes, setNotes] = useState(appt.notes ?? "");
@@ -183,10 +191,14 @@ function NotesCard({
   return (
     <Card title="Reason & notes" className="lg:col-span-3">
       <div className="space-y-4">
-        <Input label="Reason" maxLength={255} value={reason} onChange={(e) => setReason(e.target.value)} />
+        <Input label="Reason" maxLength={255} value={reason} disabled={!canEditReason} onChange={(e) => setReason(e.target.value)} />
         <Textarea label="Notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className="flex justify-end">
-          <Button disabled={!dirty || disabled} onClick={() => onSave({ reason: reason.trim() || null, notes: notes.trim() || null })}>
+          <Button
+            disabled={!dirty || disabled}
+            // Dentists may only send notes (the backend rejects any other field from them).
+            onClick={() => onSave({ ...(canEditReason && { reason: reason.trim() || null }), notes: notes.trim() || null })}
+          >
             Save notes
           </Button>
         </div>

@@ -59,5 +59,8 @@ export const useRole = (): Role => useContext(AuthContext).user?.role ?? "dentis
 export const can = {
   book: (r: Role) => r !== "dentist",
   editPatients: (r: Role) => r !== "dentist",
+  // Dentists may only mark their own appointments completed / no-show and edit notes.
+  confirm: (r: Role) => r !== "dentist",
+  editReason: (r: Role) => r !== "dentist",
   reports: (r: Role) => r === "admin",
 };

@@ -29,6 +29,9 @@ Plan week ~8 of 16 (Integration & Testing). Backend, frontend and auth are all o
 - ✅ Login page + token + logout (done by Aung in PR #7, please review)
 - ✅ Calendar, booking form, patient search, dentist dashboard, role-based page hiding
 - ✅ `frontend/Dockerfile` (Aung, PR #7)
+- ✅ Dentist screens match roles.md: no Confirm, reason read-only, own schedule only (no dentist picker)
+- ✅ Calendar: only overlapping appointments share a column's width
+- ⬜ UI testing on desktop/tablet + accessibility check (week 9)
 
 ### Aung Sett Hpone — Auth, DevOps & QA
 - ✅ README, `.gitignore`, PR template, CONTRIBUTING, roles & permissions doc
@@ -54,10 +57,10 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
   else `alembic upgrade head` fails with two heads. (2) `patients.py` conflicts: keep the user-scoped
   `_get_or_404(db, id, user)` and pass `user` in `patient_treatments`, so dentists can't read the history of
   patients that aren't theirs. Details in my comment on PR #4.
-- 2026-10-18 Aung → Aye Nyein Moe: I wired real login into the frontend (PR #7, please review): new `/login`
-  page, token + `Authorization` header + 401 redirect in `lib/api.ts`, `lib/role.tsx` now reads the user from
-  `/auth/me`, and the "Viewing as" switcher became name + Log out. Dentists now only see their own patients.
-  Run everything with `docker compose up --build` → http://localhost:3000.
+- 2026-10-18 Aye Nyein Moe → Aung: reviewed the frontend part of PR #7 (login, token, 401 redirect, `/auth/me`,
+  logout): looks good, all 6 e2e tests pass locally. Follow-up on `frontend` (needs #7 merged first): dentist
+  screens now follow roles.md (no Confirm, reason read-only, no dentist picker), plus one new e2e test
+  `e2e/tests/dentist.spec.ts` in your folder. Please review that file.
 - 2026-10-18 Aung → team: **staging host decided: one small Linux VPS (~$5/month) running our docker compose
   stack + Caddy (HTTPS) + daily DB backups, auto-deployed from `main` by CI.** See [deploy.md](deploy.md).
   Need from the team: who pays for/creates the server and a (sub)domain, then I'll do the setup + GitHub secrets.
@@ -71,3 +74,5 @@ Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
   frontend login/logout; frontend Dockerfile (full stack in compose); Playwright e2e in CI;
   staging setup (VPS + Caddy + backups + deploy workflow) tested locally incl. backup restore. PR #7.
 - 2026-10-18 Aung: fixed #6 (tokens survive password change; limiter memory growth). Commented on #4/#5, opened staging notice.
+- 2026-10-18 Aye Nyein Moe: reviewed PR #7 frontend changes; fixed dentist 403s in the UI (Confirm, reason edit,
+  dentist picker); calendar overlap layout; new dentist e2e test. 7/7 e2e pass against the local stack.
