@@ -37,9 +37,9 @@ Ask the user which member they are if it matters for the task, and work on **tha
 ## Run / test
 ```bash
 cp .env.example .env
-docker compose up --build                       # db + backend, http://localhost:8000/docs
+docker compose up --build                       # db + backend + frontend: http://localhost:3000, API http://localhost:8000/docs
 docker compose exec backend python seed.py      # fake data; logins admin@example.com / dentalflow-dev
 docker compose exec -e TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/dentalflow_test backend pytest
 ```
-Without Docker: see backend/README.md. In `backend/`: `pytest` and `ruff check .` must pass (CI runs both,
+Without Docker: see backend/README.md. E2E (Playwright) tests live in `e2e/`; staging runbook in docs/deploy.md. In `backend/`: `pytest` and `ruff check .` must pass (CI runs both,
 coverage must stay ≥ 90%). Test fixtures: `client` = admin, `client_for(Role.x)`, `anon`.

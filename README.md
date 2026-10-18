@@ -12,20 +12,24 @@ double-booking prevention, audit log, clinic analytics, and staff logins with ro
 ## Quick start (Docker)
 ```bash
 cp .env.example .env              # then edit SECRET_KEY etc.
-docker compose up --build         # PostgreSQL + backend; migrations run automatically
+docker compose up --build         # PostgreSQL + backend + frontend; migrations run automatically
 docker compose exec backend python seed.py   # synthetic data + dev logins
 ```
-- API docs: http://localhost:8000/docs (click **Authorize** and log in with a dev account)
+- App: http://localhost:3000 · API docs: http://localhost:8000/docs (click **Authorize** and log in with a dev account)
 - Dev logins (password `dentalflow-dev`): `admin@example.com`, `reception@example.com`, `dentist1@example.com`
 - Run the tests:
   ```bash
   docker compose exec -e TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/dentalflow_test backend pytest
   ```
+- End-to-end tests (Playwright, with the stack running and seeded):
+  ```bash
+  docker run --rm --network dental_flow_default -e E2E_BASE_URL=http://frontend:3000 -v "$PWD/e2e:/e2e" -w /e2e mcr.microsoft.com/playwright:v1.49.1-noble sh -c "npm ci && npx playwright test"
+  ```
 
 Without Docker, see [backend/README.md](backend/README.md).
 
 ## Docs
-- [Requirements](docs/requirements.md) · [ERD](docs/erd.md) · [API endpoints](docs/api.md) · [Roles & permissions](docs/roles.md)
+- [Requirements](docs/requirements.md) · [ERD](docs/erd.md) · [API endpoints](docs/api.md) · [Roles & permissions](docs/roles.md) · [Staging deployment](docs/deploy.md)
 - [Contributing: branches, PRs, reviews](CONTRIBUTING.md) · **[Progress board & team notes](docs/progress.md)** · [CLAUDE.md](CLAUDE.md) (context for Claude Code)
 
 ## Patient data

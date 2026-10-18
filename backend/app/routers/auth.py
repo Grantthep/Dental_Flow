@@ -8,7 +8,7 @@ from app.deps import current_user
 from app.models import User
 from app.ratelimit import login_limiter
 from app.schemas import PasswordChange, Token, UserOut
-from app.security import ACCESS_TOKEN_MINUTES, create_access_token, hash_password, verify_password
+from app.security import ACCESS_TOKEN_MINUTES, create_access_token, hash_password, password_changed_now, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,4 +45,5 @@ def change_password(body: PasswordChange, user: User = Depends(current_user), db
     if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(400, "Current password is incorrect")
     user.password_hash = hash_password(body.new_password)
+    user.password_changed_at = password_changed_now()
     db.commit()

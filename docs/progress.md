@@ -4,13 +4,13 @@ Everyone updates this at the end of a work session (or asks Claude to). Keep it 
 Full task list: the weekly plan (DentalFlow_Weekly_Plan.docx). ✅ done · 🟡 in progress / partly · ⬜ not started
 
 ## Where we are
-Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't been pushed yet.
+Plan week ~8 of 16 (Integration & Testing). Backend, frontend and auth are all on `main`; the app now has a real login.
 
 | Area | Status |
 |---|---|
 | Backend & DB (Grant) | ✅ Phases 1–4 + Phase 6 analytics APIs, merged to `main` (PR #1) |
-| Auth, DevOps & QA (Aung) | ✅ Weeks 1–8 backend-side work on `devops`, CI green — **PR #2 waiting for review** |
-| Frontend (Aye Nyein Moe) | ⬜ No `frontend` branch on GitHub yet |
+| Auth, DevOps & QA (Aung) | ✅ PR #2 merged. PR #7: frontend login, Docker, Playwright e2e, security tests, staging setup |
+| Frontend (Aye Nyein Moe) | ✅ Calendar, booking, patients, dashboard, reports merged (PR #3) |
 
 ## Checklist by member
 
@@ -20,14 +20,15 @@ Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't be
 - ✅ Appointments, availability, slots, double-booking prevention, reschedule/cancel, audit log
 - ✅ Booking hardening, indexes, patient CSV/Excel import tool
 - ✅ SQL analytics + report APIs (Phase 6)
-- ⬜ Review PR #2 (auth touches your routers + `deps.py`)
+- ✅ Review PR #2
+- ⬜ Review PR #7 (touches `routers/patients.py` and `main.py`)
 - ⬜ Repo settings (owner only): branch protection on `main` (require PR, 1 approval, CI checks "Backend lint + tests" and "Docker stack smoke test")
 
 ### Aye Nyein Moe — Frontend
-- ⬜ Push the Next.js project to a `frontend` branch (CI builds it automatically once `frontend/package.json` exists)
-- ⬜ Login page: see "Frontend notes" in [roles.md](roles.md)
-- ⬜ Calendar, booking form, patient search, dentist dashboard, role-based page hiding
-- ⬜ Add `frontend/Dockerfile` (or ask Aung) so it joins `docker-compose.yml`
+- ✅ Push the Next.js project (PR #3)
+- ✅ Login page + token + logout (done by Aung in PR #7, please review)
+- ✅ Calendar, booking form, patient search, dentist dashboard, role-based page hiding
+- ✅ `frontend/Dockerfile` (Aung, PR #7)
 
 ### Aung Sett Hpone — Auth, DevOps & QA
 - ✅ README, `.gitignore`, PR template, CONTRIBUTING, roles & permissions doc
@@ -36,26 +37,37 @@ Plan week ~8 of 16 (Integration & Testing). Backend is ahead, frontend hasn't be
 - ✅ Login API, Argon2 hashing, JWT, protected routes, role-based permissions, `/users` admin API
 - ✅ Auth/permission tests (52 backend tests, ~98% coverage)
 - ✅ Login rate limiting, CORS
-- 🟡 Security tests (auth bypass, role checks done; SQL injection / input fuzzing still to do)
-- ⬜ Frontend Dockerfile + compose service (after frontend lands)
-- ⬜ Playwright end-to-end tests: login, create booking (needs frontend)
-- ⬜ Staging deployment: cloud host, HTTPS, backups, deploy step in CI (week 10) — team to pick a host
+- ✅ Auth hardening (#6): password change/reset logs out old tokens; rate limiter memory can't grow (PR #7)
+- ✅ Security tests: auth bypass, role checks, SQL injection, input fuzzing (found + fixed NUL-byte / int-overflow 500s)
+- ✅ Frontend Dockerfile + compose service
+- ✅ Playwright end-to-end tests: login, logout, role hiding, create booking — run in CI
+- 🟡 Staging deployment: VPS + Caddy HTTPS + daily backups + CI deploy all ready ([deploy.md](deploy.md)); needs a server bought + secrets set
 
 ## Handoffs / questions
 Add a line: `YYYY-MM-DD From → To: message`. Delete it once answered.
 
-- 2026-10-18 Aung → Grant: please review PR #2. I added role checks to your routers and changed
-  `deps.current_user_id` to return the logged-in user (audit logs now have real `user_id`).
-  Time off is admin-only as in your api.md. Also please turn on branch protection for `main`.
-- 2026-10-18 Aung → Aye Nyein Moe: login + token rules for the UI are in [roles.md](roles.md)
-  ("Frontend notes"). Dev logins after `seed.py`: `admin@example.com`, `reception@example.com`,
-  `dentist1@example.com`, password `dentalflow-dev`. CORS allows `http://localhost:3000`.
-- 2026-10-18 Aung → team: open question: should dentists see **all** patients or only patients they
-  have appointments with? Currently all (read-only).
-- 2026-10-18 Aung → team: we need to pick a cloud host for staging (week 10).
+- 2026-10-18 Aung → Grant: please review PR #7. Edits in your area: `routers/patients.py` (dentists see only
+  their own patients, decided by the team) and `main.py` (DB "bad value" errors → 422 instead of 500).
+  Branch protection: the deploy workflow needs nothing extra; the required check names didn't change.
+- 2026-10-18 Aung → Grant: PR #4 vs PR #7 overlap. (1) Both add a migration on top of `21eff677ad3c`;
+  whichever merges second must set its `down_revision` to the other's (`bc23ba68177d` / `7c1d2e3f4a5b`),
+  else `alembic upgrade head` fails with two heads. (2) `patients.py` conflicts: keep the user-scoped
+  `_get_or_404(db, id, user)` and pass `user` in `patient_treatments`, so dentists can't read the history of
+  patients that aren't theirs. Details in my comment on PR #4.
+- 2026-10-18 Aung → Aye Nyein Moe: I wired real login into the frontend (PR #7, please review): new `/login`
+  page, token + `Authorization` header + 401 redirect in `lib/api.ts`, `lib/role.tsx` now reads the user from
+  `/auth/me`, and the "Viewing as" switcher became name + Log out. Dentists now only see their own patients.
+  Run everything with `docker compose up --build` → http://localhost:3000.
+- 2026-10-18 Aung → team: **staging host decided: one small Linux VPS (~$5/month) running our docker compose
+  stack + Caddy (HTTPS) + daily DB backups, auto-deployed from `main` by CI.** See [deploy.md](deploy.md).
+  Need from the team: who pays for/creates the server and a (sub)domain, then I'll do the setup + GitHub secrets.
 
 ## Log
 - 2026-10-17 Grant: backend Phases 1–4 and 6 merged to `main` (PR #1).
 - 2026-10-18 Aung: auth, roles, Docker, CI, docs pushed to `devops`; PR #2 opened; CI green.
 - 2026-10-18 Aung: full Docker stack verified on Windows (Docker Desktop): migrate, seed, login, 52 tests pass in the container.
   Tip: if you already have PostgreSQL installed locally, set `DB_PORT=5433` in `.env` (port 5432 is taken).
+- 2026-10-18 Aung: dentists see only their own patients; SQL injection + fuzzing tests (fixed two 500s);
+  frontend login/logout; frontend Dockerfile (full stack in compose); Playwright e2e in CI;
+  staging setup (VPS + Caddy + backups + deploy workflow) tested locally incl. backup restore. PR #7.
+- 2026-10-18 Aung: fixed #6 (tokens survive password change; limiter memory growth). Commented on #4/#5, opened staging notice.

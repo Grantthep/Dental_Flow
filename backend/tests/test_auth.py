@@ -57,6 +57,7 @@ def test_inactive_user_cannot_login_or_use_token(anon, client_for, db):
     jwt.encode({"sub": "1", "exp": datetime.now(UTC) - timedelta(minutes=1)}, SECRET_KEY, algorithm=ALGORITHM),
     jwt.encode({"sub": "1", "exp": datetime.now(UTC) + timedelta(hours=1)}, "x" * 32 + "wrong-key", algorithm=ALGORITHM),
     jwt.encode({"sub": "1"}, SECRET_KEY, algorithm=ALGORITHM),  # no expiry
+    jwt.encode({"sub": "1", "exp": datetime.now(UTC) + timedelta(hours=1)}, SECRET_KEY, algorithm=ALGORITHM),  # no iat
     jwt.encode({"sub": "1", "exp": datetime.now(UTC) + timedelta(hours=1)}, None, algorithm="none"),
 ])
 def test_bad_tokens_rejected(anon, make_user, token):
@@ -90,6 +91,49 @@ def test_limiter_window_expires(monkeypatch):
     assert lim.retry_after("k") == 60
     now[0] += 61
     assert lim.retry_after("k") == 0
+
+
+def test_limiter_does_not_grow_memory(monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr("app.ratelimit.time.monotonic", lambda: now[0])
+    lim = LoginLimiter(max_failures=2, window=60)
+    for i in range(100):
+        assert lim.retry_after(f"ip|random{i}@x") == 0  # lookups alone store nothing
+    assert lim._failures == {}
+    for i in range(100):
+        lim.fail(f"ip|random{i}@x")
+    assert len(lim._failures) == 100
+    now[0] += 61
+    lim.fail("ip|someone-else@x")  # next failure after the window sweeps expired keys
+    assert list(lim._failures) == ["ip|someone-else@x"]
+
+
+def old_token(user):
+    """A token issued a minute ago (iat is whole seconds, so same-second tokens count as new)."""
+    now = datetime.now(UTC)
+    return jwt.encode({"sub": str(user.id), "role": user.role.value, "iat": now - timedelta(minutes=1),
+                       "exp": now + timedelta(hours=1)}, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def test_password_change_logs_out_old_tokens(anon, make_user):
+    user = make_user(Role.dentist)
+    old = {"Authorization": f"Bearer {old_token(user)}"}
+    assert anon.get(f"{API}/auth/me", headers=old).status_code == 200
+    r = anon.post(f"{API}/auth/change-password", headers=old,
+                  json={"current_password": PASSWORD, "new_password": "new-password-1"})
+    assert r.status_code == 204
+    assert anon.get(f"{API}/auth/me", headers=old).status_code == 401
+    new = login(anon, user.email, "new-password-1").json()["access_token"]
+    assert anon.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {new}"}).status_code == 200
+
+
+def test_admin_password_reset_logs_out_old_tokens(client, anon, make_user):
+    user = make_user(Role.receptionist)
+    old = {"Authorization": f"Bearer {old_token(user)}"}
+    assert client.patch(f"{API}/users/{user.id}", json={"full_name": "Renamed"}).status_code == 200
+    assert anon.get(f"{API}/auth/me", headers=old).status_code == 200  # other edits keep sessions
+    assert client.patch(f"{API}/users/{user.id}", json={"password": "reset-pass-456"}).status_code == 200
+    assert anon.get(f"{API}/auth/me", headers=old).status_code == 401
 
 
 def test_change_password(anon, client_for):

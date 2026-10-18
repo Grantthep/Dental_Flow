@@ -105,6 +105,20 @@ def test_dentist_reads_but_does_not_book(dentist_client, world):
                   json={"start_at": at(15), "end_at": at(16)}).status_code == 403
 
 
+def test_dentist_sees_only_own_patients(dentist_client, world, client_for):
+    c = dentist_client
+    page = c.get(f"{API}/patients").json()
+    assert [p["id"] for p in page["items"]] == [world["patient"]] and page["total"] == 1
+    assert c.get(f"{API}/patients", params={"q": "Zaw"}).json()["total"] == 0
+    assert c.get(f"{API}/patients/{world['patient']}").status_code == 200
+    # another dentist's patient looks like it doesn't exist
+    assert c.get(f"{API}/patients/{world['patient2']}").status_code == 404
+    # staff still see everyone
+    assert world["client"].get(f"{API}/patients").json()["total"] == 2
+    unlinked = client_for(Role.dentist, email="unlinked@test.local")
+    assert unlinked.get(f"{API}/patients").status_code == 403
+
+
 def test_dentist_sees_only_own_appointments(dentist_client, world):
     c = dentist_client
     page = c.get(f"{API}/appointments").json()

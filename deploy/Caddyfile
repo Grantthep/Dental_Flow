@@ -1,0 +1,24 @@
+# Caddy gets and renews the HTTPS certificate for $DOMAIN automatically (needs ports 80/443 open
+# and the domain's DNS A record pointing at this server).
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# API straight to FastAPI (same origin as the app, so no CORS); everything else to Next.js.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /health {
+		reverse_proxy backend:8000
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

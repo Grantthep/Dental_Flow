@@ -10,7 +10,31 @@ import type {
   PeriodRow,
   Rates,
   Slot,
+  User,
 } from "./types";
+
+const TOKEN_KEY = "df-token";
+
+/** The login token lives in localStorage; logout = drop it (the backend has no logout call). */
+export const token = {
+  get: () => {
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  },
+  set: (t: string) => {
+    try {
+      localStorage.setItem(TOKEN_KEY, t);
+    } catch {}
+  },
+  clear: () => {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch {}
+  },
+};
 
 /** An error from the API. `code` is set for booking errors (slot_taken, outside_hours, ...). */
 export class ApiError extends Error {
@@ -44,12 +68,20 @@ function errorMessage(data: unknown, status: number): string {
 }
 
 async function request<T>(method: string, path: string, opts: { query?: Query; body?: unknown } = {}): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  const t = token.get();
+  if (t) headers.Authorization = `Bearer ${t}`;
   const res = await fetch(`/api/v1${path}${qs(opts.query)}`, {
     method,
-    // Member 3: add the Authorization header here once login exists.
-    headers: opts.body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
   });
+  // Expired/invalid token or deactivated account: back to the login page (docs/roles.md, "Frontend notes").
+  if (res.status === 401) {
+    token.clear();
+    if (location.pathname !== "/login") location.assign(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
+  }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(res.status, errorMessage(data, res.status), data?.code);
@@ -57,6 +89,19 @@ async function request<T>(method: string, path: string, opts: { query?: Query; b
 }
 
 export const api = {
+  auth: {
+    /** OAuth2 form post; username is the email. */
+    login: async (email: string, password: string) => {
+      const res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        body: new URLSearchParams({ username: email, password }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new ApiError(res.status, errorMessage(data, res.status));
+      return data as { access_token: string; expires_in: number; user: User };
+    },
+    me: () => request<User>("GET", "/auth/me"),
+  },
   patients: {
     list: (q: { q?: string; include_inactive?: boolean; page?: number; size?: number }) =>
       request<Page<Patient>>("GET", "/patients", { query: q }),

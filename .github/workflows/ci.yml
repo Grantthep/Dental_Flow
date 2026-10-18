@@ -72,6 +72,19 @@ jobs:
             -d "username=admin@example.com&password=dentalflow-dev" | grep -q access_token
           # protected route without a token must be refused
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/v1/patients)" = "401"
+      - name: Playwright end-to-end tests (login, booking)
+        run: |
+          # compose network is "<folder>_default"; Playwright runs in its own image on that network
+          docker run --rm --network "$(basename "$PWD" | tr 'A-Z' 'a-z')_default" -e CI=1 \
+            -e E2E_BASE_URL=http://frontend:3000 -v "$PWD/e2e:/e2e" -w /e2e \
+            mcr.microsoft.com/playwright:v1.49.1-noble sh -c "npm ci --no-audit --no-fund && npx playwright test"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
       - name: Logs on failure
         if: failure()
         run: docker compose logs
@@ -98,4 +111,5 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm run typecheck
           npm run build
