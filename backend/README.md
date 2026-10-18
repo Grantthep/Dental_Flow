@@ -2,6 +2,8 @@
 
 FastAPI + SQLAlchemy 2 + PostgreSQL + Alembic.
 
+Prefer Docker? See the [root README](../README.md). Auth and roles: [docs/roles.md](../docs/roles.md).
+
 ## Run locally
 ```bash
 cd backend
@@ -14,16 +16,30 @@ set DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/dentalflo
 
 set CLINIC_TZ=Asia/Yangon           # clinic timezone for working hours (default Asia/Yangon)
 alembic upgrade head              # create tables
-python seed.py                    # fake dentists + 50 patients
+python seed.py                    # fake dentists + 50 patients + dev logins
 fastapi dev app/main.py           # http://localhost:8000/docs
 ```
+
+## Logging in
+Every endpoint except `POST /api/v1/auth/login` and `/health` needs a token.
+- In `/docs`: click **Authorize**, enter an email as *username* and the password.
+- Dev logins from `seed.py` (password `dentalflow-dev`, or `SEED_PASSWORD`):
+  `admin@example.com`, `reception@example.com`, `dentist1@example.com` .. `dentist3@example.com`.
+- Real clinic: don't seed. Create the first admin, then add staff from `/users`:
+  ```bash
+  python create_admin.py admin@clinic.com "Full Name"   # asks for the password
+  ```
+- Settings: `SECRET_KEY` (required outside `APP_ENV=development`), `ACCESS_TOKEN_MINUTES`, `CORS_ORIGINS`,
+  `LOGIN_MAX_FAILURES`, `LOGIN_WINDOW_SECONDS` — see [`.env.example`](../.env.example).
 
 ## Tests
 Needs an empty database `dentalflow_test` (tables are recreated for each test).
 ```bash
 set TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/dentalflow_test
-pytest
+pytest                            # add --cov=app for a coverage report
+ruff check .                      # lint (same as CI)
 ```
+Test clients: `client` is logged in as admin; `client_for(Role.dentist, dentist=True)` and `anon` for permission tests.
 
 ## Layout
 | Path | What |
@@ -33,7 +49,9 @@ pytest
 | `app/schemas.py` | request/response models + validation |
 | `app/routers/` | API endpoints (`/api/v1/...`) |
 | `alembic/versions/` | migrations — after changing models run `alembic revision --autogenerate -m "..."` |
-| `seed.py` | synthetic data |
+| `seed.py` | synthetic data + dev logins |
+| `app/security.py`, `app/deps.py` | password hashing, JWT, `require_roles` |
+| `create_admin.py` | first real admin account |
 
 Double booking is blocked by PostgreSQL exclusion constraints on `appointments`
 (same dentist or same patient, overlapping time, status not cancelled/no-show).

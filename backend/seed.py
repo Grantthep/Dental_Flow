@@ -1,8 +1,13 @@
-"""Fill the database with synthetic (fake) dentists, working hours and patients.
+"""Fill the database with synthetic (fake) dentists, working hours, patients and staff logins.
 
 Usage:  python seed.py [number_of_patients]   (default 50; skips if patients already exist)
+
+Dev logins (password = SEED_PASSWORD, default dentalflow-dev): admin@example.com,
+reception@example.com, and dentist1..3@example.com (linked to the three dentists).
+Never run this against production; create the real admin with create_admin.py.
 """
 
+import os
 import sys
 from datetime import time
 
@@ -10,7 +15,8 @@ from faker import Faker
 from sqlalchemy import func, select
 
 from app.db import SessionLocal
-from app.models import Availability, Dentist, Patient
+from app.models import Availability, Dentist, Patient, Role, User
+from app.security import hash_password
 
 DENTISTS = [
     ("Dr. Aye Chan", "General dentistry"),
@@ -31,8 +37,17 @@ def seed(n_patients: int = 50) -> None:
             print("Database already has patients - skipping seed.")
             return
 
-        for name, specialty in DENTISTS:
+        pw = hash_password(os.getenv("SEED_PASSWORD", "dentalflow-dev"))
+        db.add_all([
+            User(email="admin@example.com", full_name="Clinic Admin", role=Role.admin, password_hash=pw),
+            User(email="reception@example.com", full_name="Front Desk", role=Role.receptionist, password_hash=pw),
+        ])
+        for i, (name, specialty) in enumerate(DENTISTS, 1):
+            login = User(email=f"dentist{i}@example.com", full_name=name, role=Role.dentist, password_hash=pw)
+            db.add(login)
+            db.flush()
             dentist = Dentist(
+                user_id=login.id,
                 full_name=name,
                 specialty=specialty,
                 phone=fake.numerify("09-###-###-###"),
@@ -59,7 +74,7 @@ def seed(n_patients: int = 50) -> None:
             for _ in range(n_patients)
         )
         db.commit()
-        print(f"Seeded {len(DENTISTS)} dentists and {n_patients} patients.")
+        print(f"Seeded {len(DENTISTS)} dentists, {n_patients} patients and {len(DENTISTS) + 2} staff logins.")
 
 
 if __name__ == "__main__":

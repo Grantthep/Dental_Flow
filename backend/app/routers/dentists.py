@@ -4,10 +4,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Dentist
+from app.deps import current_user, require_roles
+from app.models import Dentist, Role
 from app.schemas import DentistCreate, DentistOut, DentistUpdate
 
-router = APIRouter(prefix="/dentists", tags=["dentists"])
+router = APIRouter(prefix="/dentists", tags=["dentists"], dependencies=[Depends(current_user)])
+admin = [Depends(require_roles(Role.admin))]
 
 
 def _get_or_404(db: Session, dentist_id: int) -> Dentist:
@@ -34,7 +36,7 @@ def list_dentists(include_inactive: bool = False, db: Session = Depends(get_db))
     return db.scalars(stmt).all()
 
 
-@router.post("", response_model=DentistOut, status_code=201)
+@router.post("", response_model=DentistOut, status_code=201, dependencies=admin)
 def create_dentist(body: DentistCreate, db: Session = Depends(get_db)):
     dentist = Dentist(**body.model_dump())
     db.add(dentist)
@@ -48,7 +50,7 @@ def get_dentist(dentist_id: int, db: Session = Depends(get_db)):
     return _get_or_404(db, dentist_id)
 
 
-@router.patch("/{dentist_id}", response_model=DentistOut)
+@router.patch("/{dentist_id}", response_model=DentistOut, dependencies=admin)
 def update_dentist(dentist_id: int, body: DentistUpdate, db: Session = Depends(get_db)):
     dentist = _get_or_404(db, dentist_id)
     for field, value in body.model_dump(exclude_unset=True).items():
