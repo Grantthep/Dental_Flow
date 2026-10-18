@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type MouseEvent } from "react";
-import { DentistSelect, useDentists } from "@/components/DentistSelect";
+import { DentistSelect, ownDentistId, useDentists } from "@/components/DentistSelect";
 import { patientName } from "@/components/PatientPicker";
 import { STATUS_LABEL, STATUS_STYLE } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { ErrorBox, Loading, PageHeader } from "@/components/ui/States";
 import { api } from "@/lib/api";
-import { can, useRole } from "@/lib/role";
+import { can, useAuth, useRole } from "@/lib/role";
 import { addDays, clinicDay, clinicTime, fmtDay, fmtDayShort, fmtTime, minuteOfDay, today, weekStart } from "@/lib/time";
 import type { Appointment } from "@/lib/types";
 import { useFetch } from "@/lib/useFetch";
@@ -19,19 +19,32 @@ const DAY_END = 19 * 60; // 19:00
 const PX_PER_MIN = 1.2;
 const HOURS = Array.from({ length: (DAY_END - DAY_START) / 60 }, (_, i) => DAY_START / 60 + i);
 
-/** Put overlapping appointments side by side: each gets a lane index. */
+/** Put overlapping appointments side by side. Lanes are counted per group of overlapping
+ *  appointments, so one that overlaps nothing keeps the full column width. */
 function layout(items: Appointment[]) {
-  const laneEnds: number[] = [];
-  const placed = [...items]
-    .sort((a, b) => a.start_at.localeCompare(b.start_at))
-    .map((a) => {
-      const start = new Date(a.start_at).getTime();
-      let lane = laneEnds.findIndex((end) => end <= start);
-      if (lane < 0) lane = laneEnds.push(0) - 1;
-      laneEnds[lane] = new Date(a.end_at).getTime();
-      return { a, lane };
-    });
-  return { placed, lanes: Math.max(1, laneEnds.length) };
+  const time = (s: string) => new Date(s).getTime();
+  const placed: { a: Appointment; lane: number; lanes: number }[] = [];
+  let group: typeof placed = [];
+  let laneEnds: number[] = [];
+  let groupEnd = 0;
+  const closeGroup = () => group.forEach((p) => (p.lanes = laneEnds.length));
+  for (const a of [...items].sort((x, y) => time(x.start_at) - time(y.start_at))) {
+    const start = time(a.start_at);
+    if (start >= groupEnd) {
+      closeGroup();
+      group = [];
+      laneEnds = [];
+    }
+    let lane = laneEnds.findIndex((end) => end <= start);
+    if (lane < 0) lane = laneEnds.push(0) - 1;
+    laneEnds[lane] = time(a.end_at);
+    groupEnd = Math.max(groupEnd, laneEnds[lane]);
+    const p = { a, lane, lanes: 1 };
+    group.push(p);
+    placed.push(p);
+  }
+  closeGroup();
+  return placed;
 }
 
 type Column = { key: string; label: string; date: string; dentistId: number | null; items: Appointment[] };
@@ -49,10 +62,12 @@ function Calendar() {
   const params = useSearchParams();
   const router = useRouter();
   const role = useRole();
+  const { user } = useAuth();
   const dentists = useDentists();
   const [view, setView] = useState<"day" | "week">(params.get("view") === "week" ? "week" : "day");
   const [day, setDay] = useState(() => (/^\d{4}-\d{2}-\d{2}$/.test(params.get("date") ?? "") ? params.get("date")! : today()));
-  const [dentistId, setDentistId] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const dentistId = role === "dentist" ? ownDentistId(dentists.data, user?.id) : picked;
   const [showCancelled, setShowCancelled] = useState(false);
 
   const from = view === "day" ? day : weekStart(day);
@@ -129,9 +144,11 @@ function Calendar() {
               </button>
             ))}
           </div>
-          <div className="w-56">
-            <DentistSelect dentists={dentists.data} value={dentistId} onChange={setDentistId} allLabel="All dentists" />
-          </div>
+          {role !== "dentist" && (
+            <div className="w-56">
+              <DentistSelect dentists={dentists.data} value={picked} onChange={setPicked} allLabel="All dentists" />
+            </div>
+          )}
           <label className="flex items-center gap-2 pb-2 text-sm text-slate-600">
             <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
             Show cancelled
@@ -165,7 +182,7 @@ function Calendar() {
             </div>
 
             {columns.map((col) => {
-              const { placed, lanes } = layout(col.items);
+              const placed = layout(col.items);
               const isToday = col.date === today();
               return (
                 <div key={col.key} className="min-w-0 flex-1 border-r border-slate-100 last:border-r-0">
@@ -187,7 +204,7 @@ function Calendar() {
                         style={{ top: (h * 60 - DAY_START) * PX_PER_MIN }}
                       />
                     ))}
-                    {placed.map(({ a, lane }) => {
+                    {placed.map(({ a, lane, lanes }) => {
                       const start = Math.max(minuteOfDay(a.start_at), DAY_START);
                       const end = Math.min(minuteOfDay(a.end_at) || 24 * 60, DAY_END);
                       return (
