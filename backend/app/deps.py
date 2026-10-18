@@ -15,10 +15,13 @@ STAFF = (Role.admin, Role.receptionist)  # front-desk actions: patients, booking
 
 
 def current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    user_id = decode_access_token(token)
-    user = db.get(User, user_id) if user_id else None
-    # Deactivated accounts lose access immediately, even with an unexpired token.
-    if not user or not user.is_active:
+    decoded = decode_access_token(token)
+    user = db.get(User, decoded[0]) if decoded else None
+    # Deactivated accounts lose access immediately, even with an unexpired token,
+    # and a password change/reset logs out every token issued before it.
+    if not user or not user.is_active or (
+        user.password_changed_at and decoded[1] < user.password_changed_at.timestamp()
+    ):
         raise HTTPException(401, "Not authenticated", headers={"WWW-Authenticate": "Bearer"})
     return user
 

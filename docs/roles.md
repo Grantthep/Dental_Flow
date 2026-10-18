@@ -35,6 +35,8 @@ checked by `backend/tests/test_permissions.py` — change both together.
 - Tokens: JWT (HS256), signed with `SECRET_KEY`, valid `ACCESS_TOKEN_MINUTES` (default 480 = one shift).
   No refresh token in V1 — when it expires the frontend sends the user back to the login page.
 - Logout is client-side: the frontend deletes the token.
+- Changing your password, or an admin resetting it, logs out every token issued before the change
+  (`users.password_changed_at`). After changing your own password, log in again.
 - Login is limited to 5 failed attempts per IP + email per 15 minutes (`429` with `Retry-After`).
 - The backend refuses to start outside `APP_ENV=development` without a `SECRET_KEY` of 32+ characters.
 

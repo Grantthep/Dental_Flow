@@ -37,10 +37,16 @@ def create_access_token(user_id: int, role: str) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> int | None:
-    """User id from a valid, unexpired token; None otherwise."""
+def decode_access_token(token: str) -> tuple[int, int] | None:
+    """(user id, issued-at unix seconds) from a valid, unexpired token; None otherwise."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["sub", "exp"]})
-        return int(payload["sub"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require": ["sub", "exp", "iat"]})
+        return int(payload["sub"]), int(payload["iat"])
     except (jwt.InvalidTokenError, ValueError):
         return None
+
+
+def password_changed_now() -> datetime:
+    """Stored in users.password_changed_at. Whole seconds, because a token's iat is whole seconds:
+    a token issued later in the same second must still count as newer."""
+    return datetime.now(UTC).replace(microsecond=0)

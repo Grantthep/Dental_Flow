@@ -9,7 +9,7 @@ from app.db import get_db
 from app.deps import require_roles
 from app.models import Role, User
 from app.schemas import UserCreate, UserOut, UserUpdate
-from app.security import hash_password
+from app.security import hash_password, password_changed_now
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(require_roles(Role.admin))])
 
@@ -60,6 +60,7 @@ def update_user(user_id: int, body: UserUpdate, db: Session = Depends(get_db)):
         raise HTTPException(409, "Cannot remove the last active admin")
     if "password" in changes:
         user.password_hash = hash_password(changes.pop("password"))
+        user.password_changed_at = password_changed_now()
     for field, value in changes.items():
         setattr(user, field, value)
     db.commit()
