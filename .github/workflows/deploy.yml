@@ -1,0 +1,58 @@
+name: Deploy staging
+
+# After CI passes on main, the staging server pulls that exact commit and restarts the stack.
+# Until the STAGING_* secrets are set (docs/deploy.md) this job skips itself, so it never fails CI.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_DOMAIN }}
+    env:
+      HOST: ${{ secrets.STAGING_HOST }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - id: cfg
+        run: echo "ready=$([ -n "$HOST" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - if: steps.cfg.outputs.ready != 'true'
+        run: echo "::notice::Staging not configured yet (STAGING_HOST secret missing) - skipping deploy."
+      - name: Deploy over SSH
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          DEPLOY_USER: ${{ secrets.STAGING_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploy "${DEPLOY_USER:-deploy}@$HOST" "SHA=$SHA bash -s" <<'REMOTE'
+            set -euo pipefail
+            cd /opt/dentalflow
+            git fetch --quiet origin main
+            git checkout --quiet --detach "$SHA"
+            docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build --wait --wait-timeout 300
+            docker image prune -f > /dev/null
+            echo "deployed $SHA"
+          REMOTE
+      - name: Smoke test
+        if: steps.cfg.outputs.ready == 'true' && vars.STAGING_DOMAIN != ''
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "https://${{ vars.STAGING_DOMAIN }}/health"
+          test "$(curl -s -o /dev/null -w '%{http_code}' https://${{ vars.STAGING_DOMAIN }}/api/v1/patients)" = "401"

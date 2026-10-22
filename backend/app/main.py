@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import DataError
 
 from app.booking import BookingError
 from app.routers import appointments, audit_logs, auth, availability, dentists, patients, reports, users
@@ -25,6 +26,12 @@ for r in (auth, users, patients, dentists, availability, appointments, audit_log
 @app.exception_handler(BookingError)
 def booking_error(_: Request, exc: BookingError):
     return JSONResponse({"detail": exc.detail, "code": exc.code}, status_code=exc.status_code)
+
+
+@app.exception_handler(DataError)
+def bad_value(_: Request, exc: DataError):
+    # Input that passed validation but PostgreSQL can't store/compare (NUL bytes, integers out of range): client error.
+    return JSONResponse({"detail": "Invalid value in request"}, status_code=422)
 
 
 @app.get("/health", tags=["health"])

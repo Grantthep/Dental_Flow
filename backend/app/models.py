@@ -45,6 +45,8 @@ class User(TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(150))
     role: Mapped[Role] = mapped_column(Enum(Role, name="user_role"))
     is_active: Mapped[bool] = mapped_column(server_default=text("true"))
+    # Tokens issued before this are rejected (app/deps.py), so changing a password logs out old sessions.
+    password_changed_at: Mapped[datetime | None]
 
 
 class Dentist(TimestampMixin, Base):

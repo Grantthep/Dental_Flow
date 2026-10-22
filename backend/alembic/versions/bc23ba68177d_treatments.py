@@ -1,7 +1,7 @@
 """treatments
 
 Revision ID: bc23ba68177d
-Revises: 21eff677ad3c
+Revises: 7c1d2e3f4a5b
 Create Date: 2026-10-18 16:33:40.718951
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'bc23ba68177d'
-down_revision: Union[str, Sequence[str], None] = '21eff677ad3c'
+down_revision: Union[str, Sequence[str], None] = '7c1d2e3f4a5b'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

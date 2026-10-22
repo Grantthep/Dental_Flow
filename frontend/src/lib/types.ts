@@ -2,6 +2,15 @@
 
 export type Role = "admin" | "receptionist" | "dentist";
 
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+}
+
 export type AppointmentStatus = "booked" | "confirmed" | "completed" | "cancelled" | "no_show";
 
 export interface Page<T> {

@@ -7,7 +7,7 @@ checked by `backend/tests/test_permissions.py` — change both together.
 |---|---|---|---|
 | Log in, view own account, change own password | ✅ | ✅ | ✅ |
 | Staff accounts (`/users`): create, change role, deactivate, reset password | ✅ | ❌ | ❌ |
-| Patients: search, view | ✅ | ✅ | ✅ |
+| Patients: search, view | ✅ all | ✅ all | own only |
 | Patients: create, edit, deactivate | ✅ | ✅ | ❌ |
 | Dentists: view | ✅ | ✅ | ✅ |
 | Dentists: create, edit | ✅ | ❌ | ❌ |
@@ -16,7 +16,7 @@ checked by `backend/tests/test_permissions.py` — change both together.
 | Appointments: view | ✅ all | ✅ all | own only |
 | Appointments: book, reschedule, cancel | ✅ | ✅ | ❌ |
 | Appointments: edit reason / notes / status | ✅ | ✅ | own only: notes, and status → `completed` / `no_show` |
-| Treatment history: view | ✅ | ✅ | ✅ (own appointments; all for a patient's history) |
+| Treatment history: view | ✅ | ✅ | own patients only (their full history, all dentists) |
 | Treatment history: add (append-only) | ✅ | ❌ | own appointments |
 | Audit log | ✅ | ❌ | ❌ |
 | Reports / analytics | ✅ | ❌ | ❌ |
@@ -26,6 +26,8 @@ checked by `backend/tests/test_permissions.py` — change both together.
 - `401` = not logged in / token expired / account deactivated. `403` = logged in but wrong role.
 - A dentist account sees only appointments of the dentist profile linked to it (`dentists.user_id`).
   Another dentist's appointment returns `404`, not `403`, so IDs can't be probed.
+- A dentist account sees only patients who have (or had) an appointment with its dentist profile.
+  Other patients are left out of search and return `404`.
   An unlinked dentist account gets `403 "Your account is not linked to a dentist profile"`.
 - Deactivating a user takes effect immediately, even if their token hasn't expired.
 - The last active admin can't be demoted or deactivated.
@@ -35,6 +37,8 @@ checked by `backend/tests/test_permissions.py` — change both together.
 - Tokens: JWT (HS256), signed with `SECRET_KEY`, valid `ACCESS_TOKEN_MINUTES` (default 480 = one shift).
   No refresh token in V1 — when it expires the frontend sends the user back to the login page.
 - Logout is client-side: the frontend deletes the token.
+- Changing your password, or an admin resetting it, logs out every token issued before the change
+  (`users.password_changed_at`). After changing your own password, log in again.
 - Login is limited to 5 failed attempts per IP + email per 15 minutes (`429` with `Retry-After`).
 - The backend refuses to start outside `APP_ENV=development` without a `SECRET_KEY` of 32+ characters.
 

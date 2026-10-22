@@ -62,6 +62,8 @@ def test_permissions(client_for, dentist_client, past):  # noqa: F811
     assert add(dentist_client, own).status_code == 201
     assert add(dentist_client, other).status_code == 404       # other dentist's appointment is invisible
     assert dentist_client.get(f"{API}/appointments/{other}/treatments").status_code == 404
+    assert dentist_client.get(f"{API}/patients/{past['patient']}/treatments").status_code == 200   # own patient
+    assert dentist_client.get(f"{API}/patients/{past['patient2']}/treatments").status_code == 404  # not theirs
 
     reception = client_for(Role.receptionist)
     assert add(reception, own).status_code == 403

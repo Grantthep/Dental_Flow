@@ -1,0 +1,87 @@
+# Staging (and later production) on one Linux server. Runbook: docs/deploy.md
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --build --wait
+# Differences from local dev: Caddy in front with automatic HTTPS, nothing else exposed to the
+# internet, containers restart on reboot, and a nightly database backup.
+
+services:
+  db:
+    ports: !reset []
+    restart: unless-stopped
+    volumes: !override
+      - pgdata:/var/lib/postgresql/data   # no test database on staging
+
+  backend:
+    ports: !reset []
+    restart: unless-stopped
+    # Trust X-Forwarded-For only from Caddy, so the login rate limit sees real client IPs
+    # and clients can't fake theirs.
+    command: >-
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=172.30.0.10"
+
+  frontend:
+    ports: !reset []
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. staging.dentalflow.example}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # HTTPS certificates
+      - caddy_config:/config
+    networks:
+      default:
+        ipv4_address: 172.30.0.10
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATABASE: ${POSTGRES_DB:-dentalflow}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    configs:
+      - source: backup_script
+        target: /backup.sh
+    depends_on:
+      backend:
+        condition: service_healthy  # backend runs the migrations; don't dump an empty schema
+
+configs:
+  backup_script:
+    content: |
+      # One compressed dump a day; dumps older than KEEP_DAYS are deleted.
+      set -eu
+      while true; do
+        f="/backups/dentalflow-$$(date -u +%Y%m%d-%H%M).dump"
+        pg_dump -Fc -f "$$f.tmp" && mv "$$f.tmp" "$$f" && echo "backup ok: $$f"
+        find /backups -name 'dentalflow-*.dump' -mtime +"$$KEEP_DAYS" -delete
+        sleep 86400
+      done
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  caddy_data:
+  caddy_config:
