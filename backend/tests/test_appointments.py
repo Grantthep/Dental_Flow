@@ -137,3 +137,11 @@ def test_cannot_complete_future_appointment(client, setup):
     for status in ("completed", "no_show"):
         r = client.patch(f"{API}/appointments/{a}", json={"status": status})
         assert r.status_code == 409 and r.json()["code"] == "too_early"
+
+
+def test_race_returns_409_not_500(client, setup, monkeypatch):
+    import app.routers.appointments as appointments
+    monkeypatch.setattr(appointments, "check_bookable", lambda *a, **k: None)  # both requests pass the pre-check
+    assert book(client, setup, "d1", "p1", at(9), at(9, 30)).status_code == 201
+    r = book(client, setup, "d1", "p2", at(9), at(9, 30))
+    assert r.status_code == 409 and r.json()["code"] == "slot_taken"

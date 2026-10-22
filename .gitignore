@@ -19,6 +19,8 @@ node_modules/
 # Local data / exports (may contain real patient data)
 *.csv
 *.xlsx
+# fake example row only, safe to commit
+!backend/import_template.csv
 *.dump
 *.sql.gz
 backups/

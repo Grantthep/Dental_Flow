@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import STAFF, current_user, own_dentist_id, require_roles
-from app.models import Appointment, Patient, Role, User
-from app.schemas import Page, PatientCreate, PatientOut, PatientUpdate
+from app.models import Appointment, Patient, Role, Treatment, User
+from app.schemas import Page, PatientCreate, PatientOut, PatientUpdate, TreatmentOut
 
 router = APIRouter(prefix="/patients", tags=["patients"], dependencies=[Depends(current_user)])
 write = [Depends(require_roles(*STAFF))]
@@ -84,3 +84,14 @@ def update_patient(patient_id: int, body: PatientUpdate, db: Session = Depends(g
     db.commit()
     db.refresh(patient)
     return patient
+
+
+@router.get("/{patient_id}/treatments", response_model=list[TreatmentOut])
+def patient_treatments(patient_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    """Full treatment history of a patient, newest first, across all dentists (dentists: own patients only)."""
+    _get_or_404(db, patient_id, user)
+    return db.scalars(
+        select(Treatment).join(Treatment.appointment)
+        .where(Appointment.patient_id == patient_id)
+        .order_by(Appointment.start_at.desc(), Treatment.id.desc())
+    ).all()

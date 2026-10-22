@@ -62,6 +62,8 @@ CSV or Excel (.xlsx). Dry run first — it only reports, writes nothing:
 python import_patients.py clinic_patients.xlsx --errors bad_rows.csv
 python import_patients.py clinic_patients.xlsx --commit
 ```
+Give the clinic [`import_template.csv`](import_template.csv) as the format to export to.
+Rehearsed on a copy of the dev DB (2026-10-18): 503 rows → 500 imported, 3 bad rows reported, re-run imports 0.
 Headers are matched loosely (`Name`, `Mobile`, `DOB`, `Sex`, `Allergies`, ...); see the top of `import_patients.py`.
 Dates that aren't `YYYY-MM-DD` are read as `DD/MM/YYYY` (change with `--date-format`).
 Duplicates (same name + phone) and invalid rows are skipped and listed.
@@ -73,3 +75,14 @@ reports fail with `time zone "Asia/Yangon" not recognized`. Fix once:
 ```bash
 python -c "import tzdata,os,shutil,pgserver; shutil.copytree(os.path.join(os.path.dirname(tzdata.__file__),'zoneinfo'), os.path.join(os.path.dirname(pgserver.__file__),'pginstall','share','postgresql','timezone'), dirs_exist_ok=True)"
 ```
+
+## Production database migrations
+The container runs `alembic upgrade head` on every start, so deploying = applying new migrations.
+1. **Back up first**: `pg_dump -Fc "$DATABASE_URL" > before-<version>.dump` (or the host's snapshot).
+2. Check what will run: `alembic current` and `alembic history -r current:head`; read each new migration file.
+3. Try it on a copy of production (restore the dump into a scratch DB, run `alembic upgrade head`, run the app).
+4. Deploy. If it fails: restore the dump. `alembic downgrade -1` works for our migrations but drops
+   whatever the newer migration added, so prefer restore for real data.
+- Never edit a migration that already ran anywhere; add a new one.
+- Run only one backend container while migrating (two containers would run the same upgrade at once).
+- Real clinic data: import with `import_patients.py` only after the clinic approves and backups are verified.
