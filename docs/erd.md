@@ -11,6 +11,7 @@ erDiagram
     dentists ||--o{ time_off : "takes"
     dentists ||--o{ appointments : "treats"
     patients ||--o{ appointments : "books"
+    appointments ||--o{ treatments : "records"
 
     users {
         int id PK
@@ -72,6 +73,15 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
+    treatments {
+        int id PK
+        int appointment_id FK
+        string tooth "FDI, e.g. 36; null = whole mouth"
+        string procedure
+        text notes
+        int created_by FK "users.id"
+        timestamptz created_at
+    }
     audit_logs {
         int id PK
         int user_id FK
@@ -95,6 +105,7 @@ erDiagram
 | dentists | `UNIQUE (user_id)` | one account per dentist |
 
 ## Indexes (initial)
+- `appointments (start_at)` — all-dentists calendar, reports
 - `appointments (dentist_id, start_at)` — calendar by dentist/date
 - `appointments (patient_id, start_at)` — patient history
 - `patients (last_name, first_name)`, `patients (phone)` — search

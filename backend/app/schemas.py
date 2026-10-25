@@ -221,3 +221,27 @@ class Token(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: Password
+
+
+# ---------- Treatments ----------
+class TreatmentCreate(BaseModel):
+    tooth: str | None = Field(None, pattern=r"^[1-8][1-8]$", description="FDI tooth number, e.g. 36; omit for whole mouth")
+    procedure: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)]
+    notes: str | None = None
+
+
+class TreatmentAppointment(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    start_at: datetime
+    dentist: DentistBrief
+
+
+class TreatmentOut(TreatmentCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_by: int | None
+    created_at: datetime
+    appointment: TreatmentAppointment
